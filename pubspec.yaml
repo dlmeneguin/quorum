@@ -1,0 +1,59 @@
+name: quorum
+description: "Aplicativo de finanças pessoais - local-first para Windows e Android"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI e ícones
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  lucide_icons: ^0.257.0
+  fl_chart: ^0.69.2
+
+  # Gerenciamento de estado
+  flutter_riverpod: ^2.6.1
+
+  # Banco de dados
+  drift: ^2.22.0
+  sqlite3_flutter_libs: ^0.5.27
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Utilitários
+  intl: ^0.19.0
+
+  # Exportação PDF
+  pdf: ^3.11.1
+  printing: ^5.13.4
+
+  # Backup (import/export JSON)
+  file_picker: ^8.1.2
+  share_plus: ^10.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.22.0
+  build_runner: ^2.4.13
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+flutter:
+  uses-material-design: true
+
+  # Assets do aplicativo
+  assets:
+    - assets/images/
+
+  # Fontes carregadas via google_fonts package
+  # DM Sans - corpo, labels, valores
+  # Spline Sans - títulos, números grandes
