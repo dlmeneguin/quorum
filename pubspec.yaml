@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_localizations:
+    sdk: flutter
+
   # UI e ícones
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
@@ -27,7 +30,7 @@ dependencies:
   path: ^1.9.0
 
   # Utilitários
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Exportação PDF
   pdf: ^3.11.1
