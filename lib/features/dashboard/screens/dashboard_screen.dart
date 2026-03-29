@@ -10,6 +10,8 @@ import '../providers/dashboard_provider.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/expenses_chart.dart';
+import '../widgets/balance_chart.dart';
+import '../widgets/upcoming_recurrences_widget.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -30,12 +32,14 @@ class DashboardScreen extends ConsumerWidget {
     final totalBalanceAsync = ref.watch(totalBalanceProvider);
     final summaryAsync = ref.watch(monthSummaryProvider);
     final expensesAsync = ref.watch(expensesByCategoryProvider);
+    final balanceHistoryAsync = ref.watch(balanceHistoryProvider);
+    final upcomingAsync = ref.watch(upcomingRecurrencesProvider);
     final now = DateTime.now();
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Header com saudação e saldo total
+          // ── Header com saudação e saldo total ──
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
@@ -72,7 +76,6 @@ class DashboardScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      // Botão de contas
                       IconButton(
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
@@ -97,7 +100,8 @@ class DashboardScreen extends ConsumerWidget {
                   totalBalanceAsync.when(
                     data: (total) => Text(
                       CurrencyUtils.format(total),
-                      style: AppTextStyles.dashboardNumber(Colors.white),
+                      style:
+                          AppTextStyles.dashboardNumber(Colors.white),
                     ),
                     loading: () => Text(
                       'Carregando...',
@@ -111,7 +115,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // Seletor de mês
+          // ── Seletor de mês + resumo ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -126,14 +130,13 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // Cards de resumo
           SliverToBoxAdapter(
             child: summaryAsync.when(
               data: (summary) => Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Column(
                   children: [
-                    // Resultado do mês — card maior
+                    // Resultado do mês
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -176,8 +179,7 @@ class DashboardScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 'Resultado do mês',
-                                style:
-                                    AppTextStyles.label(textSecondary),
+                                style: AppTextStyles.label(textSecondary),
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -196,7 +198,6 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // Receitas e despesas lado a lado
                     Row(
                       children: [
                         Expanded(
@@ -232,29 +233,47 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // Chart de gastos por categoria
+          // ── Line chart: evolução do patrimônio ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: expensesAsync.when(
-                data: (expenses) =>
-                    ExpensesChart(expenses: expenses),
-                loading: () => Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderColor),
-                  ),
-                  child: const Center(
-                      child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => const SizedBox.shrink(),
+              child: balanceHistoryAsync.when(
+                data: (history) => BalanceChart(data: history),
+                loading: () => _loadingCard(surfaceColor, borderColor),
+                error: (_, __) => const SizedBox.shrink(),
               ),
             ),
           ),
 
-          // Contas rápidas
+          // ── Donut chart: gastos por categoria ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              child: expensesAsync.when(
+                data: (expenses) =>
+                    ExpensesChart(expenses: expenses),
+                loading: () => _loadingCard(surfaceColor, borderColor),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+          // ── Próximos lançamentos (recorrências + parcelas) ──
+          SliverToBoxAdapter(
+            child: upcomingAsync.when(
+              data: (upcoming) {
+                if (upcoming.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: UpcomingRecurrencesWidget(data: upcoming),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ),
+
+          // ── Suas contas ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
@@ -279,7 +298,7 @@ class DashboardScreen extends ConsumerWidget {
 
           accountsAsync.when(
             data: (accounts) => SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -317,17 +336,22 @@ class DashboardScreen extends ConsumerWidget {
                               style: AppTextStyles.body(textPrimary),
                             ),
                           ),
-                          ref.watch(accountBalanceProvider(account)).when(
+                          ref
+                              .watch(accountBalanceProvider(account))
+                              .when(
                             data: (balance) => Text(
                               CurrencyUtils.format(balance),
                               style: AppTextStyles.bodyBold(
-                                balance < 0 ? AppColors.danger : textPrimary,
+                                balance < 0
+                                    ? AppColors.danger
+                                    : textPrimary,
                               ),
                             ),
                             loading: () => const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
                             ),
                             error: (_, __) => const SizedBox.shrink(),
                           ),
@@ -339,12 +363,25 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            loading: () => const SliverToBoxAdapter(child: SizedBox()),
+            loading: () =>
+                const SliverToBoxAdapter(child: SizedBox()),
             error: (_, __) =>
                 const SliverToBoxAdapter(child: SizedBox()),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _loadingCard(Color surfaceColor, Color borderColor) {
+    return Container(
+      height: 180,
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 

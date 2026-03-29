@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/database/daos/transactions_dao.dart';
 import '../../../core/models/category_expense.dart';
 
 // Mês/ano atualmente selecionado no dashboard
@@ -8,7 +10,7 @@ final selectedMonthProvider = StateProvider<DateTime>((ref) {
   return DateTime(now.year, now.month);
 });
 
-// Resumo financeiro do mês — StreamProvider para reagir a mudanças
+// Resumo financeiro do mês
 final monthSummaryProvider = StreamProvider<MonthSummary>((ref) {
   final db = ref.watch(databaseProvider);
   final selected = ref.watch(selectedMonthProvider);
@@ -16,7 +18,6 @@ final monthSummaryProvider = StreamProvider<MonthSummary>((ref) {
   final start = DateTime(selected.year, selected.month, 1);
   final end = DateTime(selected.year, selected.month + 1, 0, 23, 59, 59);
 
-  // Observa o stream de transações e recalcula o resumo a cada mudança
   return db.transactionsDao
       .watchTransactionsByPeriod(start, end)
       .asyncMap((_) async {
@@ -33,7 +34,7 @@ final monthSummaryProvider = StreamProvider<MonthSummary>((ref) {
   });
 });
 
-// Gastos por categoria — StreamProvider para reagir a mudanças
+// Gastos por categoria
 final expensesByCategoryProvider =
     StreamProvider<List<CategoryExpense>>((ref) {
   final db = ref.watch(databaseProvider);
@@ -46,6 +47,35 @@ final expensesByCategoryProvider =
       .watchTransactionsByPeriod(start, end)
       .asyncMap((_) =>
           db.transactionsDao.getExpensesByCategory(start, end));
+});
+
+// Saldo histórico mensal para o line chart (últimos 6 meses)
+final balanceHistoryProvider =
+    StreamProvider<List<MonthlyBalance>>((ref) {
+  final db = ref.watch(databaseProvider);
+
+  // Recalcula sempre que alguma transação mudar
+  return db.transactionsDao
+      .watchTransactionsByPeriod(
+        DateTime(2000),
+        DateTime(2100),
+      )
+      .asyncMap((_) =>
+          db.transactionsDao.getMonthlyBalances(6));
+});
+
+// Próximas recorrências e parcelas agrupadas por mês
+final upcomingRecurrencesProvider =
+    StreamProvider<Map<DateTime, List<Transaction>>>((ref) {
+  final db = ref.watch(databaseProvider);
+
+  return db.transactionsDao
+      .watchTransactionsByPeriod(
+        DateTime.now(),
+        DateTime(2100),
+      )
+      .asyncMap((_) =>
+          db.transactionsDao.getUpcomingRecurrences());
 });
 
 class MonthSummary {

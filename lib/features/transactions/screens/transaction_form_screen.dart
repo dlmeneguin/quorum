@@ -192,7 +192,10 @@ class _TransactionFormScreenState
 
   Future<void> _saveRecurring(
       AppDatabase db, double amount, int dateTs, int now) async {
-    final id = await db.transactionsDao.createTransaction(
+    // Salva apenas o lançamento original marcado como recorrente.
+    // Os meses futuros são calculados dinamicamente — não geramos
+    // filhos no banco, pois recorrente não tem prazo de fim.
+    await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedAccountId!,
         categoryId: Value(_selectedCategoryId),
@@ -209,31 +212,6 @@ class _TransactionFormScreenState
         updatedAt: Value(now),
       ),
     );
-
-    // Gera os próximos 11 meses automaticamente
-    final baseDate = DateTime.fromMillisecondsSinceEpoch(dateTs);
-    for (int i = 1; i <= 11; i++) {
-      final nextDate =
-          DateTime(baseDate.year, baseDate.month + i, baseDate.day);
-      await db.transactionsDao.createTransaction(
-        TransactionsCompanion.insert(
-          accountId: _selectedAccountId!,
-          categoryId: Value(_selectedCategoryId),
-          type: Value(_selectedType),
-          amount: amount,
-          date: nextDate.millisecondsSinceEpoch,
-          description: Value(_descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim()),
-          paymentMethod: Value(_selectedPaymentMethod),
-          isRecurring: const Value(true),
-          recurrenceType: const Value('monthly'),
-          recurrenceParentId: Value(id),
-          createdAt: Value(now),
-          updatedAt: Value(now),
-        ),
-      );
-    }
   }
 
   Future<void> _saveTransfer(
