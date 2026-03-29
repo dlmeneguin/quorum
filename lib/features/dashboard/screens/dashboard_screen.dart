@@ -27,6 +27,7 @@ class DashboardScreen extends ConsumerWidget {
         isDark ? AppColors.borderDark : AppColors.borderLight;
 
     final accountsAsync = ref.watch(accountsProvider);
+    final totalBalanceAsync = ref.watch(totalBalanceProvider);
     final summaryAsync = ref.watch(monthSummaryProvider);
     final expensesAsync = ref.watch(expensesByCategoryProvider);
     final now = DateTime.now();
@@ -93,16 +94,11 @@ class DashboardScreen extends ConsumerWidget {
                         Colors.white.withOpacity(0.7)),
                   ),
                   const SizedBox(height: 6),
-                  accountsAsync.when(
-                    data: (accounts) {
-                      final total = accounts.fold(
-                          0.0, (sum, a) => sum + a.initialBalance);
-                      return Text(
-                        CurrencyUtils.format(total),
-                        style: AppTextStyles.dashboardNumber(
-                            Colors.white),
-                      );
-                    },
+                  totalBalanceAsync.when(
+                    data: (total) => Text(
+                      CurrencyUtils.format(total),
+                      style: AppTextStyles.dashboardNumber(Colors.white),
+                    ),
                     loading: () => Text(
                       'Carregando...',
                       style: AppTextStyles.dashboardNumber(
@@ -321,11 +317,19 @@ class DashboardScreen extends ConsumerWidget {
                               style: AppTextStyles.body(textPrimary),
                             ),
                           ),
-                          Text(
-                            CurrencyUtils.format(
-                                account.initialBalance),
-                            style:
-                                AppTextStyles.bodyBold(textPrimary),
+                          ref.watch(accountBalanceProvider(account)).when(
+                            data: (balance) => Text(
+                              CurrencyUtils.format(balance),
+                              style: AppTextStyles.bodyBold(
+                                balance < 0 ? AppColors.danger : textPrimary,
+                              ),
+                            ),
+                            loading: () => const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            error: (_, __) => const SizedBox.shrink(),
                           ),
                         ],
                       ),

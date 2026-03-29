@@ -8,14 +8,44 @@ final accountsProvider = StreamProvider<List<Account>>((ref) {
   return db.accountsDao.watchAllAccounts();
 });
 
-// Saldo total consolidado (soma de todas as contas)
-final totalBalanceProvider = FutureProvider<double>((ref) async {
+// Saldo real de uma conta: initialBalance + receitas - despesas
+final accountBalanceProvider =
+    StreamProvider.family<double, Account>((ref, account) {
   final db = ref.watch(databaseProvider);
-  final accounts = await db.accountsDao.watchAllAccounts().first;
 
-  double total = 0;
-  for (final account in accounts) {
-    total += account.initialBalance;
-  }
-  return total;
+  return db.transactionsDao
+      .watchTransactionsByAccount(account.id)
+      .map((transactions) {
+    double balance = account.initialBalance;
+    for (final t in transactions) {
+      if (t.type == 'income') {
+        balance += t.amount;
+      } else if (t.type == 'expense') {
+        balance -= t.amount;
+      }
+      // transferências não afetam o saldo aqui pois já geram dois lançamentos
+    }
+    return balance;
+  });
+});
+
+// Patrimônio total consolidado (soma dos saldos reais de todas as contas)
+final totalBalanceProvider = StreamProvider<double>((ref) {
+  final db = ref.watch(databaseProvider);
+
+  return db.accountsDao.watchAllAccounts().asyncMap((accounts) async {
+    double total = 0;
+    for (final account in accounts) {
+      final transactions = await db.transactionsDao
+          .watchTransactionsByAccount(account.id)
+          .first;
+      double balance = account.initialBalance;
+      for (final t in transactions) {
+        if (t.type == 'income') balance += t.amount;
+        if (t.type == 'expense') balance -= t.amount;
+      }
+      total += balance;
+    }
+    return total;
+  });
 });

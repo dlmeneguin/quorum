@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/currency.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import 'account_type_badge.dart';
 
-class AccountCard extends StatelessWidget {
+class AccountCard extends ConsumerWidget {
   final Account account;
+  final AsyncValue<double> balanceAsync;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -14,13 +16,14 @@ class AccountCard extends StatelessWidget {
   const AccountCard({
     super.key,
     required this.account,
+    required this.balanceAsync,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor =
         isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
@@ -67,7 +70,7 @@ class AccountCard extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Ícone da conta
+                  // Ícone
                   Container(
                     width: 44,
                     height: 44,
@@ -96,23 +99,36 @@ class AccountCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Saldo e ações
+                  // Saldo real
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        CurrencyUtils.format(account.initialBalance),
-                        style: AppTextStyles.value(textPrimary),
+                      balanceAsync.when(
+                        data: (balance) => Text(
+                          CurrencyUtils.format(balance),
+                          style: AppTextStyles.value(
+                            balance < 0
+                                ? AppColors.danger
+                                : textPrimary,
+                          ),
+                        ),
+                        loading: () => const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'saldo inicial',
+                        'saldo atual',
                         style: AppTextStyles.label(textSecondary),
                       ),
                     ],
                   ),
                   const SizedBox(width: 8),
-                  // Menu de ações
+                  // Menu
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert,
                         size: 18, color: textSecondary),
@@ -139,8 +155,8 @@ class AccountCard extends StatelessWidget {
                                 size: 16, color: AppColors.danger),
                             SizedBox(width: 8),
                             Text('Excluir',
-                                style:
-                                    TextStyle(color: AppColors.danger)),
+                                style: TextStyle(
+                                    color: AppColors.danger)),
                           ],
                         ),
                       ),

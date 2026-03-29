@@ -78,8 +78,7 @@ class AccountsScreen extends ConsumerWidget {
           // Patrimônio total
           accountsAsync.when(
             data: (accounts) {
-              final total = accounts.fold(
-                  0.0, (sum, a) => sum + a.initialBalance);
+              final totalAsync = ref.watch(totalBalanceProvider);
               return SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -105,10 +104,14 @@ class AccountsScreen extends ConsumerWidget {
                               Colors.white.withOpacity(0.8)),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          CurrencyUtils.format(total),
-                          style: AppTextStyles.dashboardNumber(
-                              Colors.white),
+                        totalAsync.when(
+                          data: (total) => Text(
+                            CurrencyUtils.format(total),
+                            style: AppTextStyles.dashboardNumber(Colors.white),
+                          ),
+                          loading: () => const CircularProgressIndicator(
+                              color: Colors.white),
+                          error: (_, __) => const SizedBox.shrink(),
                         ),
                       ],
                     ),
@@ -148,11 +151,13 @@ class AccountsScreen extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final account = accounts[index];
+                      final balanceAsync =
+                          ref.watch(accountBalanceProvider(account));
                       return AccountCard(
                         account: account,
+                        balanceAsync: balanceAsync,
                         onTap: () {},
-                        onEdit: () =>
-                            _openForm(context, account: account),
+                        onEdit: () => _openForm(context, account: account),
                         onDelete: () =>
                             _confirmDelete(context, ref, account.id),
                       );
