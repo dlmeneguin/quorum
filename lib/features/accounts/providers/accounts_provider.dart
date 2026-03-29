@@ -33,7 +33,14 @@ final accountBalanceProvider =
 final totalBalanceProvider = StreamProvider<double>((ref) {
   final db = ref.watch(databaseProvider);
 
-  return db.accountsDao.watchAllAccounts().asyncMap((accounts) async {
+  // Observa TODAS as transações — qualquer mudança recalcula o total
+  return db.transactionsDao
+      .watchTransactionsByPeriod(
+        DateTime(2000), // data mínima — pega tudo
+        DateTime(2100), // data máxima — pega tudo
+      )
+      .asyncMap((_) async {
+    final accounts = await db.accountsDao.watchAllAccounts().first;
     double total = 0;
     for (final account in accounts) {
       final transactions = await db.transactionsDao
