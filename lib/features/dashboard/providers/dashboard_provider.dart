@@ -8,35 +8,44 @@ final selectedMonthProvider = StateProvider<DateTime>((ref) {
   return DateTime(now.year, now.month);
 });
 
-// Resumo financeiro do mês selecionado
-final monthSummaryProvider = FutureProvider<MonthSummary>((ref) async {
+// Resumo financeiro do mês — StreamProvider para reagir a mudanças
+final monthSummaryProvider = StreamProvider<MonthSummary>((ref) {
   final db = ref.watch(databaseProvider);
   final selected = ref.watch(selectedMonthProvider);
 
   final start = DateTime(selected.year, selected.month, 1);
   final end = DateTime(selected.year, selected.month + 1, 0, 23, 59, 59);
 
-  final income = await db.transactionsDao.getTotalIncomeInPeriod(start, end);
-  final expense = await db.transactionsDao.getTotalExpenseInPeriod(start, end);
+  // Observa o stream de transações e recalcula o resumo a cada mudança
+  return db.transactionsDao
+      .watchTransactionsByPeriod(start, end)
+      .asyncMap((_) async {
+    final income =
+        await db.transactionsDao.getTotalIncomeInPeriod(start, end);
+    final expense =
+        await db.transactionsDao.getTotalExpenseInPeriod(start, end);
 
-  return MonthSummary(
-    income: income,
-    expense: expense,
-    balance: income - expense,
-  );
+    return MonthSummary(
+      income: income,
+      expense: expense,
+      balance: income - expense,
+    );
+  });
 });
 
-// Gastos agrupados por categoria no mês
+// Gastos por categoria — StreamProvider para reagir a mudanças
 final expensesByCategoryProvider =
-    FutureProvider<List<CategoryExpense>>((ref) async {
+    StreamProvider<List<CategoryExpense>>((ref) {
   final db = ref.watch(databaseProvider);
   final selected = ref.watch(selectedMonthProvider);
 
   final start = DateTime(selected.year, selected.month, 1);
-  final end =
-      DateTime(selected.year, selected.month + 1, 0, 23, 59, 59);
+  final end = DateTime(selected.year, selected.month + 1, 0, 23, 59, 59);
 
-  return db.transactionsDao.getExpensesByCategory(start, end);
+  return db.transactionsDao
+      .watchTransactionsByPeriod(start, end)
+      .asyncMap((_) =>
+          db.transactionsDao.getExpensesByCategory(start, end));
 });
 
 class MonthSummary {
