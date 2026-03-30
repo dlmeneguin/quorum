@@ -30,6 +30,7 @@ dependencies:
   path: ^1.9.0
 
   # Utilitários
+  rxdart: ^0.27.7
   intl: ^0.20.2
 
   # Exportação PDF

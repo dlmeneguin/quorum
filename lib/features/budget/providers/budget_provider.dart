@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
@@ -31,20 +32,23 @@ final budgetWithSpendingProvider =
   final start = DateTime(selected.year, selected.month, 1);
   final end = DateTime(selected.year, selected.month + 1, 0, 23, 59, 59);
 
-  // Reage a mudanças nos orçamentos E nas transações do período
   final budgetsStream =
       db.budgetsDao.watchBudgetsByMonth(selected.year, selected.month);
 
-  return budgetsStream.asyncMap((budgets) async {
-    if (budgets.isEmpty) return [];
+  final transactionsStream =
+      db.transactionsDao.watchTransactionsByPeriod(start, end);
 
-    // Busca gastos reais por categoria no período
+  return Rx.combineLatest2(
+    budgetsStream,
+    transactionsStream,
+    (budgets, transactions) => (budgets, transactions),
+  ).asyncMap((tuple) async {
+    final budgets = tuple.$1;
+    if (budgets.isEmpty) return <BudgetWithSpending>[];
+
     final expenses =
         await db.transactionsDao.getExpensesByCategory(start, end);
 
-    // Monta mapa categoryId → totalGasto usando os nomes como chave de cruzamento
-    // Como getExpensesByCategory retorna categoryName, precisamos buscar
-    // as categorias para cruzar pelo id
     final allCategories =
         await db.categoriesDao.watchAllCategories().first;
     final categoryMap = {for (final c in allCategories) c.id: c};
