@@ -125,9 +125,18 @@ class TransactionsScreen extends ConsumerWidget {
                       final date = dates[index];
                       final items = grouped[date]!;
                       final dayTotal = items.fold(0.0, (sum, t) {
-                        return t.type == 'income'
-                            ? sum + t.amount
-                            : sum - t.amount;
+                        if (t.type == 'income') return sum + t.amount;
+                        if (t.type == 'expense') return sum - t.amount;
+                        if (t.type == 'transfer') {
+                          // Transferências se cancelam mutuamente no total do dia
+                          // Entrada soma, saída subtrai
+                          if (t.transferPairId != null && t.transferPairId! < t.id) {
+                            return sum + t.amount; // entrada
+                          } else {
+                            return sum - t.amount; // saída
+                          }
+                        }
+                        return sum;
                       });
 
                       return Column(
@@ -348,11 +357,20 @@ class _TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.type == 'income';
     final isTransfer = transaction.type == 'transfer';
+
+    // Para transferências: entrada se transferPairId < id, saída se > id
+    final isTransferIn = isTransfer &&
+        transaction.transferPairId != null &&
+        transaction.transferPairId! < transaction.id;
+
     final color = isTransfer
         ? AppColors.accent
         : isIncome
             ? AppColors.success
             : AppColors.danger;
+
+    // Sinal do valor: receita ou transferência de entrada = positivo
+    final isPositive = isIncome || isTransferIn;
 
     return GestureDetector(
       onTap: onTap,
@@ -382,7 +400,9 @@ class _TransactionTile extends StatelessWidget {
             ),
             child: Icon(
               isTransfer
-                  ? Icons.swap_horiz_rounded
+                  ? (isTransferIn
+                      ? Icons.arrow_downward_rounded
+                      : Icons.arrow_upward_rounded)
                   : isIncome
                       ? Icons.arrow_downward_rounded
                       : Icons.arrow_upward_rounded,
@@ -406,8 +426,10 @@ class _TransactionTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${isIncome ? '+' : '-'} ${CurrencyUtils.format(transaction.amount)}',
-                style: AppTextStyles.bodyBold(color),
+                '${isPositive ? '+' : '-'} ${CurrencyUtils.format(transaction.amount)}',
+                style: AppTextStyles.bodyBold(
+                  isPositive ? AppColors.success : AppColors.danger,
+                ),
               ),
               const SizedBox(width: 4),
               PopupMenuButton<String>(

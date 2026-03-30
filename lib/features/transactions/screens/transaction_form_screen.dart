@@ -216,38 +216,38 @@ class _TransactionFormScreenState
 
   Future<void> _saveTransfer(
       AppDatabase db, double amount, int dateTs, int now) async {
-    // Saída da conta origem
+    final desc = _descriptionController.text.trim().isEmpty
+        ? 'Transferência'
+        : _descriptionController.text.trim();
+  
+    // Saída da conta origem — registrada como expense para afetar o saldo
     final outId = await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedAccountId!,
         type: const Value('transfer'),
         amount: amount,
         date: dateTs,
-        description: Value(_descriptionController.text.trim().isEmpty
-            ? 'Transferência'
-            : _descriptionController.text.trim()),
+        description: Value(desc),
         createdAt: Value(now),
         updatedAt: Value(now),
       ),
     );
-
-    // Entrada na conta destino
-    await db.transactionsDao.createTransaction(
+  
+    // Entrada na conta destino — registrada como income para afetar o saldo
+    final inId = await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedToAccountId!,
         type: const Value('transfer'),
         amount: amount,
         date: dateTs,
-        description: Value(_descriptionController.text.trim().isEmpty
-            ? 'Transferência'
-            : _descriptionController.text.trim()),
+        description: Value(desc),
         transferPairId: Value(outId),
         createdAt: Value(now),
         updatedAt: Value(now),
       ),
     );
-
-    // Vincula o pair no primeiro registro
+  
+    // Vincula o pair no lançamento de saída
     await db.transactionsDao.updateTransaction(
       TransactionsCompanion(
         id: Value(outId),
@@ -255,7 +255,7 @@ class _TransactionFormScreenState
         amount: Value(amount),
         date: Value(dateTs),
         type: const Value('transfer'),
-        transferPairId: Value(outId + 1),
+        transferPairId: Value(inId),
         updatedAt: Value(now),
       ),
     );
