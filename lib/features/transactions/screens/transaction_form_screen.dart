@@ -10,6 +10,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../settings/providers/categories_provider.dart';
 import '../../accounts/providers/accounts_provider.dart';
+import '../../../core/utils/balance_validator.dart';
 
 class TransactionFormScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
@@ -135,6 +136,20 @@ class _TransactionFormScreenState
 
   Future<void> _saveSimple(
       AppDatabase db, double amount, int dateTs, int now) async {
+    // Valida saldo para despesas
+    if (_selectedType == 'expense') {
+      final error = await BalanceValidator.checkSufficientBalance(
+        db: db,
+        accountId: _selectedAccountId!,
+        amount: amount,
+      );
+      if (error != null) {
+        setState(() => _isSaving = false);
+        _showError(error);
+        return;
+      }
+    }
+
     final companion = TransactionsCompanion.insert(
       accountId: _selectedAccountId!,
       categoryId: Value(_selectedCategoryId),
@@ -161,9 +176,20 @@ class _TransactionFormScreenState
 
   Future<void> _saveInstallments(
       AppDatabase db, double amount, int dateTs, int now) async {
+    // Valida saldo para o total parcelado
+    final error = await BalanceValidator.checkSufficientBalance(
+      db: db,
+      accountId: _selectedAccountId!,
+      amount: amount,
+    );
+    if (error != null) {
+      setState(() => _isSaving = false);
+      _showError(error);
+      return;
+    }
+
     final installmentAmount = amount / _installmentCount;
-    final groupId =
-        'inst_${DateTime.now().millisecondsSinceEpoch}';
+    final groupId = 'inst_${DateTime.now().millisecondsSinceEpoch}';
     final baseDate = DateTime.fromMillisecondsSinceEpoch(dateTs);
 
     for (int i = 0; i < _installmentCount; i++) {

@@ -12,6 +12,7 @@ import '../widgets/summary_card.dart';
 import '../widgets/expenses_chart.dart';
 import '../widgets/balance_chart.dart';
 import '../widgets/upcoming_recurrences_widget.dart';
+import '../widgets/wealth_distribution_chart.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -239,6 +240,20 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: balanceHistoryAsync.when(
                 data: (history) => BalanceChart(data: history),
+                loading: () => _loadingCard(surfaceColor, borderColor),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+          // ── Donut chart: distribuição do patrimônio ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              child: ref.watch(wealthDistributionProvider).when(
+                data: (slices) => slices.isEmpty
+                    ? const SizedBox.shrink()
+                    : WealthDistributionChart(slices: slices),
                 loading: () => _loadingCard(surfaceColor, borderColor),
                 error: (_, __) => const SizedBox.shrink(),
               ),
