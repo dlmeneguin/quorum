@@ -27,22 +27,28 @@ DateTime? projectCompletionDate(
     double targetAmount,
     List<GoalContribution> contributions) {
   if (currentAmount >= targetAmount) return null;
-  // Considera apenas contribuições positivas para a projeção
-  final positiveContributions =
-      contributions.where((c) => c.amount > 0).toList();
-  if (positiveContributions.isEmpty) return null;
+  if (contributions.isEmpty) return null;
 
-  final Map<String, double> byMonth = {};
-  for (final c in positiveContributions) {
+  // Calcula o fluxo líquido por mês (contribuições - retiradas)
+  final Map<String, double> netByMonth = {};
+  for (final c in contributions) {
     final date = DateTime.fromMillisecondsSinceEpoch(c.date);
     final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    byMonth[key] = (byMonth[key] ?? 0) + c.amount;
+    netByMonth[key] = (netByMonth[key] ?? 0) + c.amount;
   }
 
-  if (byMonth.isEmpty) return null;
+  if (netByMonth.isEmpty) return null;
+
+  // Considera apenas meses com fluxo líquido positivo para a média
+  // Meses com retirada líquida não contribuem para a projeção de avanço
+  final positiveMonths =
+      netByMonth.values.where((v) => v > 0).toList();
+
+  if (positiveMonths.isEmpty) return null;
 
   final monthlyAverage =
-      byMonth.values.reduce((a, b) => a + b) / byMonth.length;
+      positiveMonths.reduce((a, b) => a + b) / positiveMonths.length;
+
   if (monthlyAverage <= 0) return null;
 
   final remaining = targetAmount - currentAmount;
