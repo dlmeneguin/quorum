@@ -71,6 +71,18 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
         _targetDate = DateTime.fromMillisecondsSinceEpoch(g.targetDate!);
       }
     }
+    
+    // Auto-seleciona a conta se houver apenas uma cadastrada
+    if (widget.goal == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final accounts = ref.read(accountsProvider);
+        accounts.whenData((list) {
+          if (list.length == 1 && _selectedAccountId == null) {
+            setState(() => _selectedAccountId = list.first.id);
+          }
+        });
+      });
+    }
   }
 
   @override

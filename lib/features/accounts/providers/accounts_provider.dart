@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/models/wealth_slice.dart';
 
 final accountsProvider = StreamProvider<List<Account>>((ref) {
   final db = ref.watch(databaseProvider);
@@ -39,46 +40,45 @@ Future<double> computeAccountBalance(AppDatabase db, Account account) async {
   return balance;
 }
 
-// Saldo reativo: combina stream de transações + stream de metas
+// Saldo reativo: recalcula apenas quando transações OU metas DESTA conta mudam
 final accountBalanceProvider =
     StreamProvider.family<double, Account>((ref, account) {
   final db = ref.watch(databaseProvider);
 
   final transactionsStream =
       db.transactionsDao.watchTransactionsByAccount(account.id);
-  final goalsStream = db.goalsDao.watchAllGoals();
+  final goalsStream = db.goalsDao.watchGoalsByAccount(account.id);
 
   return Rx.combineLatest2(
     transactionsStream,
     goalsStream,
-    (transactions, goals) => null, // só precisamos do sinal de mudança
+    (transactions, goals) => null,
   ).asyncMap((_) => computeAccountBalance(db, account));
 });
 
-// Patrimônio total — soma contas livres + metas
-// Permanece igual independente de transferências para metas
+// Patrimônio total — combina streams de todas as fontes sem usar .first aninhado
 final totalBalanceProvider = StreamProvider<double>((ref) {
   final db = ref.watch(databaseProvider);
 
   final transactionsStream = db.transactionsDao
       .watchTransactionsByPeriod(DateTime(2000), DateTime(2100));
+  final accountsStream = db.accountsDao.watchAllAccounts();
   final goalsStream = db.goalsDao.watchAllGoals();
 
-  return Rx.combineLatest2(
+  return Rx.combineLatest3(
     transactionsStream,
+    accountsStream,
     goalsStream,
-    (t, g) => null,
+    (t, a, g) => null,
   ).asyncMap((_) async {
     final accounts = await db.accountsDao.watchAllAccounts().first;
     double total = 0;
 
     for (final account in accounts) {
-      // Saldo livre da conta (já descontadas as metas)
       final freeBalance = await computeAccountBalance(db, account);
       total += freeBalance;
     }
 
-    // Soma o saldo das metas ativas e pausadas
     final allGoals = await db.goalsDao.watchAllGoals().first;
     for (final goal in allGoals) {
       if (goal.status == 'active' || goal.status == 'paused') {
@@ -145,17 +145,3 @@ final wealthDistributionProvider =
     return slices;
   });
 });
-
-class WealthSlice {
-  final String label;
-  final double value;
-  final int color;
-  final bool isGoal;
-
-  const WealthSlice({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.isGoal,
-  });
-}

@@ -120,6 +120,12 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
     final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
     final isEditing = widget.budget != null;
+    final existingBudgetsAsync = ref.watch(
+      StreamProvider.autoDispose<List<Budget>>((ref) {
+        final db = ref.watch(databaseProvider);
+        return db.budgetsDao.watchBudgetsByMonth(widget.year, widget.month);
+      }),
+    );
 
     final categoriesAsync = ref.watch(expenseCategoriesProvider);
 
@@ -144,62 +150,76 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
               Text('Categoria', style: AppTextStyles.label(textSecondary)),
               const SizedBox(height: 8),
               categoriesAsync.when(
-                data: (categories) => Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.surfaceDark
-                        : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
+                data: (categories) {
+                  final usedCategoryIds = isEditing
+                      ? <int>{}
+                      : existingBudgetsAsync.whenOrNull(
+                              data: (budgets) =>
+                                  budgets.map((b) => b.categoryId).toSet()) ??
+                          <int>{};
+              
+                  final availableCategories = categories
+                      .where((c) => !usedCategoryIds.contains(c.id))
+                      .toList();
+              
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
                       color: isDark
-                          ? AppColors.borderDark
-                          : AppColors.borderLight,
-                    ),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: _selectedCategoryId,
-                      hint: Text(
-                        'Selecione a categoria',
-                        style: AppTextStyles.body(textSecondary),
-                      ),
-                      isExpanded: true,
-                      dropdownColor: isDark
                           ? AppColors.surfaceDark
                           : AppColors.surfaceLight,
-                      // Em edição, a categoria não pode ser trocada
-                      onChanged: isEditing
-                          ? null
-                          : (v) =>
-                              setState(() => _selectedCategoryId = v),
-                      items: categories
-                          .map((c) => DropdownMenuItem(
-                                value: c.id,
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: c.color != null
-                                            ? Color(c.color!)
-                                            : AppColors.primary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(c.name,
-                                        style: AppTextStyles.body(
-                                            textPrimary)),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.borderDark
+                            : AppColors.borderLight,
+                      ),
                     ),
-                  ),
-                ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: _selectedCategoryId,
+                        hint: Text(
+                          availableCategories.isEmpty && !isEditing
+                              ? 'Todas as categorias já têm orçamento'
+                              : 'Selecione a categoria',
+                          style: AppTextStyles.body(textSecondary),
+                        ),
+                        isExpanded: true,
+                        dropdownColor: isDark
+                            ? AppColors.surfaceDark
+                            : AppColors.surfaceLight,
+                        onChanged: isEditing || availableCategories.isEmpty
+                            ? null
+                            : (v) =>
+                                setState(() => _selectedCategoryId = v),
+                        items: availableCategories
+                            .map((c) => DropdownMenuItem(
+                                  value: c.id,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: c.color != null
+                                              ? Color(c.color!)
+                                              : AppColors.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(c.name,
+                                          style: AppTextStyles.body(
+                                              textPrimary)),
+                                    ],
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  );
+                },
                 loading: () => const Center(
                     child: CircularProgressIndicator()),
                 error: (_, __) => const SizedBox.shrink(),

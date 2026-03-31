@@ -196,9 +196,12 @@ class TransactionsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           final accounts = ref.read(accountsProvider);
+          final messenger = ScaffoldMessenger.of(context);
+          final navigator = Navigator.of(context);
           accounts.whenData((list) {
             if (list.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.hideCurrentSnackBar();
+              messenger.showSnackBar(
                 SnackBar(
                   content: const Text(
                       'Crie uma conta antes de adicionar transações'),
@@ -206,11 +209,14 @@ class TransactionsScreen extends ConsumerWidget {
                   action: SnackBarAction(
                     label: 'Criar conta',
                     textColor: Colors.white,
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AccountFormScreen(),
-                      ),
-                    ),
+                    onPressed: () {
+                      messenger.hideCurrentSnackBar();
+                      navigator.push(
+                        MaterialPageRoute(
+                          builder: (_) => const AccountFormScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ),
               );

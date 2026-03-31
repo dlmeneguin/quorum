@@ -67,4 +67,10 @@ class GoalsDao extends DatabaseAccessor<AppDatabase>
     return watchAllGoals().asyncMap((_) =>
         getNetContributionsByAccount(accountId));
   }
+
+  // Stream filtrado por conta — para reatividade granular no accountBalanceProvider
+  Stream<List<Goal>> watchGoalsByAccount(int accountId) =>
+      (select(goals)
+            ..where((g) => g.accountId.equals(accountId)))
+          .watch();
 }

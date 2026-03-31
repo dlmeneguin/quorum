@@ -82,6 +82,18 @@ class _TransactionFormScreenState
       _selectedPaymentMethod = t.paymentMethod;
       _isRecurring = t.isRecurring;
     }
+    
+    // Auto-seleciona a conta se houver apenas uma cadastrada
+    if (widget.transaction == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final accounts = ref.read(accountsProvider);
+        accounts.whenData((list) {
+          if (list.length == 1 && _selectedAccountId == null) {
+            setState(() => _selectedAccountId = list.first.id);
+          }
+        });
+      });
+    }
   }
 
   @override
@@ -242,11 +254,22 @@ class _TransactionFormScreenState
 
   Future<void> _saveTransfer(
       AppDatabase db, double amount, int dateTs, int now) async {
+    // Valida saldo da conta origem antes de criar os lançamentos
+    final error = await BalanceValidator.checkSufficientBalance(
+      db: db,
+      accountId: _selectedAccountId!,
+      amount: amount,
+    );
+    if (error != null) {
+      setState(() => _isSaving = false);
+      _showError(error);
+      return;
+    }
+
     final desc = _descriptionController.text.trim().isEmpty
         ? 'Transferência'
         : _descriptionController.text.trim();
-  
-    // Saída da conta origem — registrada como expense para afetar o saldo
+
     final outId = await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedAccountId!,
@@ -258,8 +281,7 @@ class _TransactionFormScreenState
         updatedAt: Value(now),
       ),
     );
-  
-    // Entrada na conta destino — registrada como income para afetar o saldo
+
     final inId = await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedToAccountId!,
@@ -272,8 +294,7 @@ class _TransactionFormScreenState
         updatedAt: Value(now),
       ),
     );
-  
-    // Vincula o pair no lançamento de saída
+
     await db.transactionsDao.updateTransaction(
       TransactionsCompanion(
         id: Value(outId),

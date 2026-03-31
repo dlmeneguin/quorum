@@ -265,10 +265,6 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
     return grouped;
   }
-
-  int _monthsBetween(DateTime from, DateTime to) {
-    return (to.year - from.year) * 12 + (to.month - from.month) + 1;
-  }
 }
 
 class MonthlyBalance {
