@@ -75,3 +75,14 @@ final accountTransactionsProvider =
         (list) => list.where((t) => t.accountId == account.id).toList(),
       );
 });
+
+// Metas ativas/pausadas vinculadas a uma conta específica
+final accountGoalsProvider =
+    StreamProvider.family<List<Goal>, Account>((ref, account) {
+  final db = ref.watch(databaseProvider);
+  return db.goalsDao.watchGoalsByAccount(account.id).map(
+        (goals) => goals
+            .where((g) => g.status == 'active' || g.status == 'paused')
+            .toList(),
+      );
+});

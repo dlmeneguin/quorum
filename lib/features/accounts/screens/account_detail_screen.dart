@@ -41,6 +41,7 @@ class AccountDetailScreen extends ConsumerWidget {
         ref.watch(accountBalanceHistoryProvider(account));
     final transactionsAsync =
         ref.watch(accountTransactionsProvider(account));
+    final goalsAsync = ref.watch(accountGoalsProvider(account));
     final selected = ref.watch(accountDetailMonthProvider);
 
     return Scaffold(
@@ -110,9 +111,33 @@ class AccountDetailScreen extends ConsumerWidget {
                     ),
                     error: (_, __) => const SizedBox.shrink(),
                   ),
+
                 ],
               ),
             ),
+          ),
+
+          // ── Card: metas vinculadas a esta conta ──
+          goalsAsync.when(
+            data: (goals) {
+              if (goals.isEmpty) {
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              }
+              return SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: _LinkedGoalsCard(
+                    goals: goals,
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
+                ),
+              );
+            },
+            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
 
           // ── Seletor de mês + resumo ──
@@ -385,6 +410,174 @@ class AccountDetailScreen extends ConsumerWidget {
         'credit' => Icons.credit_card_outlined,
         _ => Icons.account_balance_wallet_outlined,
       };
+}
+
+// ── Card de metas vinculadas ──
+
+class _LinkedGoalsCard extends StatelessWidget {
+  final List<Goal> goals;
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  const _LinkedGoalsCard({
+    required this.goals,
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final totalAllocated =
+        goals.fold(0.0, (sum, g) => sum + g.currentAmount);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.accent.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(
+                Theme.of(context).brightness == Brightness.dark
+                    ? 0.2
+                    : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título + total alocado
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.savings_outlined,
+                    size: 16, color: AppColors.accent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Dinheiro reservado em metas',
+                  style: AppTextStyles.bodyBold(textPrimary),
+                ),
+              ),
+              Text(
+                CurrencyUtils.format(totalAllocated),
+                style: AppTextStyles.splineSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Saldo alocado: este valor não aparece no seu total livre',
+            style: AppTextStyles.label(textSecondary),
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          // Lista de metas
+          ...goals.map((goal) {
+            final goalColor =
+                goal.color != null ? Color(goal.color!) : AppColors.accent;
+            final percentage = goal.targetAmount > 0
+                ? (goal.currentAmount / goal.targetAmount).clamp(0.0, 1.0)
+                : 0.0;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: goalColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          goal.name,
+                          style: AppTextStyles.body(textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (goal.status == 'paused')
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: textSecondary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'pausada',
+                            style: AppTextStyles.dmSans(
+                              fontSize: 10,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                      Text(
+                        CurrencyUtils.format(goal.currentAmount),
+                        style: AppTextStyles.bodyBold(goalColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: percentage,
+                            minHeight: 5,
+                            backgroundColor:
+                                goalColor.withOpacity(0.12),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(goalColor),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '${(percentage * 100).toStringAsFixed(0)}% de ${CurrencyUtils.format(goal.targetAmount)}',
+                        style: AppTextStyles.label(textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Widgets internos ──
