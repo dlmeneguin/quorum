@@ -99,11 +99,11 @@ class _DesktopLayout extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
                   child: Text(
-                    'Quorum',
+                    'Quórum',
                     style: AppTextStyles.splineSans(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
@@ -184,9 +184,9 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimaryLight;
+    final scheme = Theme.of(context).colorScheme;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     final secondaryColor = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondaryLight;
@@ -198,9 +198,12 @@ class _SidebarItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryLight : Colors.transparent,
+            color: isSelected
+                ? scheme.primary.withOpacity(0.12)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -208,7 +211,7 @@ class _SidebarItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: isSelected ? AppColors.primary : secondaryColor,
+                color: isSelected ? scheme.primary : secondaryColor,
               ),
               const SizedBox(width: 10),
               Text(
@@ -217,7 +220,7 @@ class _SidebarItem extends StatelessWidget {
                   fontSize: 14,
                   fontWeight:
                       isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? AppColors.primary : textColor,
+                  color: isSelected ? scheme.primary : textColor,
                 ),
               ),
             ],

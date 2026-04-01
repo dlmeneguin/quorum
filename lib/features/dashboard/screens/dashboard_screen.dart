@@ -123,6 +123,15 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               child: Row(
                 children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   Text('Resumo do mês',
                       style: AppTextStyles.sectionTitle(textPrimary)),
                   const Spacer(),
@@ -295,6 +304,15 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: Row(
                 children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   Text('Suas contas',
                       style: AppTextStyles.sectionTitle(textPrimary)),
                   const Spacer(),
@@ -305,7 +323,8 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     child: Text('Ver todas',
-                        style: AppTextStyles.label(AppColors.primary)),
+                        style: AppTextStyles.label(
+                            Theme.of(context).colorScheme.primary)),
                   ),
                 ],
               ),

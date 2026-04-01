@@ -4,16 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/utils/currency.dart';
-import '../../../core/utils/validators.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../settings/providers/categories_provider.dart';
 
-class BudgetFormDialog extends ConsumerStatefulWidget {
-  /// Nulo = criação, preenchido = edição
-  final Budget? budget;
+// Provider declarado fora da classe — recebe (year, month) como chave
+final _budgetsByMonthProvider = StreamProvider.autoDispose
+    .family<List<Budget>, (int, int)>((ref, key) {
+  final db = ref.watch(databaseProvider);
+  return db.budgetsDao.watchBudgetsByMonth(key.$1, key.$2);
+});
 
-  /// Ano/mês para o qual o orçamento será criado
+class BudgetFormDialog extends ConsumerStatefulWidget {
+  final Budget? budget;
   final int year;
   final int month;
 
@@ -120,17 +123,14 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
     final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
     final isEditing = widget.budget != null;
-    final existingBudgetsAsync = ref.watch(
-      StreamProvider.autoDispose<List<Budget>>((ref) {
-        final db = ref.watch(databaseProvider);
-        return db.budgetsDao.watchBudgetsByMonth(widget.year, widget.month);
-      }),
-    );
 
+    final existingBudgetsAsync =
+        ref.watch(_budgetsByMonthProvider((widget.year, widget.month)));
     final categoriesAsync = ref.watch(expenseCategoriesProvider);
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -139,15 +139,14 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título
               Text(
                 isEditing ? 'Editar orçamento' : 'Novo orçamento',
                 style: AppTextStyles.sectionTitle(textPrimary),
               ),
               const SizedBox(height: 24),
 
-              // Categoria
-              Text('Categoria', style: AppTextStyles.label(textSecondary)),
+              Text('Categoria',
+                  style: AppTextStyles.label(textSecondary)),
               const SizedBox(height: 8),
               categoriesAsync.when(
                 data: (categories) {
@@ -157,11 +156,11 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                               data: (budgets) =>
                                   budgets.map((b) => b.categoryId).toSet()) ??
                           <int>{};
-              
+
                   final availableCategories = categories
                       .where((c) => !usedCategoryIds.contains(c.id))
                       .toList();
-              
+
                   return Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 4),
@@ -220,13 +219,12 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                     ),
                   );
                 },
-                loading: () => const Center(
-                    child: CircularProgressIndicator()),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
                 error: (_, __) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 20),
 
-              // Valor limite
               Text('Limite mensal',
                   style: AppTextStyles.label(textSecondary)),
               const SizedBox(height: 8),
@@ -240,11 +238,11 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                 decoration: InputDecoration(
                   hintText: '0,00',
                   prefixIcon: Padding(
-                    padding:
-                        const EdgeInsets.only(left: 16, right: 8),
+                    padding: const EdgeInsets.only(left: 16, right: 8),
                     child: Text(
                       'R\$',
-                      style: AppTextStyles.bodyBold(AppColors.primary),
+                      style:
+                          AppTextStyles.bodyBold(AppColors.primary),
                     ),
                   ),
                   prefixIconConstraints:
@@ -258,7 +256,6 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
               ),
               const SizedBox(height: 28),
 
-              // Botões
               Row(
                 children: [
                   Expanded(

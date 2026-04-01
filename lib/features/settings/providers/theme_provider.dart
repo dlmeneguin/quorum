@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) {
-  return ThemeMode.system;
+enum AppThemeMode { light, dark, system, snoopy }
+
+final themeModeProvider = StateProvider<AppThemeMode>((ref) {
+  return AppThemeMode.system;
 });

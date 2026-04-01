@@ -10,12 +10,24 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appThemeMode = ref.watch(themeModeProvider);
+
+    // Para o tema Snoopy, forçamos ThemeMode.light mas com ThemeData customizado
+    final isSnoopy = appThemeMode == AppThemeMode.snoopy;
+
+    final themeMode = switch (appThemeMode) {
+      AppThemeMode.light => ThemeMode.light,
+      AppThemeMode.dark => ThemeMode.dark,
+      AppThemeMode.system => ThemeMode.system,
+      AppThemeMode.snoopy => ThemeMode.light,
+    };
+
     return MaterialApp(
       title: 'Quorum',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ref.watch(themeModeProvider),
+      theme: isSnoopy ? AppTheme.snoopy : AppTheme.light,
+      darkTheme: isSnoopy ? AppTheme.snoopy : AppTheme.dark,
+      themeMode: themeMode,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

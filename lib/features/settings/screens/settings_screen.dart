@@ -149,9 +149,10 @@ class _ThemeSelector extends ConsumerWidget {
     final currentMode = ref.watch(themeModeProvider);
 
     final options = [
-      (ThemeMode.light, Icons.light_mode_outlined, 'Claro'),
-      (ThemeMode.dark, Icons.dark_mode_outlined, 'Escuro'),
-      (ThemeMode.system, Icons.brightness_auto_outlined, 'Sistema'),
+      (AppThemeMode.light, Icons.light_mode_outlined, 'Claro'),
+      (AppThemeMode.dark, Icons.dark_mode_outlined, 'Escuro'),
+      (AppThemeMode.system, Icons.brightness_auto_outlined, 'Sistema'),
+      (AppThemeMode.snoopy, Icons.favorite_outline_rounded, 'Snoopy'),
     ];
 
     return Container(
@@ -165,6 +166,10 @@ class _ThemeSelector extends ConsumerWidget {
         children: options.map((option) {
           final (mode, icon, label) = option;
           final isSelected = currentMode == mode;
+          final isSnoopy = mode == AppThemeMode.snoopy;
+          final activeColor = isSnoopy
+              ? AppColors.snoopyPrimary
+              : AppColors.primary;
           return Expanded(
             child: GestureDetector(
               onTap: () =>
@@ -174,7 +179,9 @@ class _ThemeSelector extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.primary
+                      ? (isSnoopy
+                          ? AppColors.snoopyPrimary
+                          : AppColors.primary)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -183,21 +190,18 @@ class _ThemeSelector extends ConsumerWidget {
                     Icon(
                       icon,
                       size: 18,
-                      color: isSelected
-                          ? Colors.white
-                          : textSecondary,
+                      color: isSelected ? Colors.white : textSecondary,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       label,
                       style: AppTextStyles.dmSans(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.w400,
-                        color: isSelected
-                            ? Colors.white
-                            : textSecondary,
+                        color:
+                            isSelected ? Colors.white : textSecondary,
                       ),
                     ),
                   ],
