@@ -68,6 +68,38 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return result.read(transactions.amount.sum()) ?? 0.0;
   }
 
+  // Soma de receitas de uma conta específica no período
+  Future<double> getTotalIncomeForAccount(
+      int accountId, DateTime start, DateTime end) async {
+    final startTs = start.millisecondsSinceEpoch;
+    final endTs = end.millisecondsSinceEpoch;
+
+    final query = selectOnly(transactions)
+      ..addColumns([transactions.amount.sum()])
+      ..where(transactions.type.equals('income') &
+          transactions.accountId.equals(accountId) &
+          transactions.date.isBetweenValues(startTs, endTs));
+
+    final result = await query.getSingle();
+    return result.read(transactions.amount.sum()) ?? 0.0;
+  }
+
+  // Soma de despesas de uma conta específica no período
+  Future<double> getTotalExpenseForAccount(
+      int accountId, DateTime start, DateTime end) async {
+    final startTs = start.millisecondsSinceEpoch;
+    final endTs = end.millisecondsSinceEpoch;
+
+    final query = selectOnly(transactions)
+      ..addColumns([transactions.amount.sum()])
+      ..where(transactions.type.equals('expense') &
+          transactions.accountId.equals(accountId) &
+          transactions.date.isBetweenValues(startTs, endTs));
+
+    final result = await query.getSingle();
+    return result.read(transactions.amount.sum()) ?? 0.0;
+  }
+
   // Gastos agrupados por categoria no período
   Future<List<CategoryExpense>> getExpensesByCategory(
       DateTime start, DateTime end) async {
@@ -106,6 +138,105 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
     final result = grouped.values.toList()
       ..sort((a, b) => b.total.compareTo(a.total));
+    return result;
+  }
+
+  // Gastos agrupados por categoria no período, filtrado por conta
+  Future<List<CategoryExpense>> getExpensesByCategoryForAccount(
+      int accountId, DateTime start, DateTime end) async {
+    final startTs = start.millisecondsSinceEpoch;
+    final endTs = end.millisecondsSinceEpoch;
+
+    final rows = await (select(transactions).join([
+      innerJoin(
+        categories,
+        categories.id.equalsExp(transactions.categoryId),
+      ),
+    ])
+          ..where(transactions.type.equals('expense') &
+              transactions.accountId.equals(accountId) &
+              transactions.date.isBetweenValues(startTs, endTs)))
+        .get();
+
+    final Map<int, CategoryExpense> grouped = {};
+    for (final row in rows) {
+      final transaction = row.readTable(transactions);
+      final category = row.readTable(categories);
+      final existing = grouped[category.id];
+      if (existing != null) {
+        grouped[category.id] = CategoryExpense(
+          categoryName: category.name,
+          categoryColor: category.color ?? 0xFF6B7280,
+          total: existing.total + transaction.amount,
+        );
+      } else {
+        grouped[category.id] = CategoryExpense(
+          categoryName: category.name,
+          categoryColor: category.color ?? 0xFF6B7280,
+          total: transaction.amount,
+        );
+      }
+    }
+
+    final result = grouped.values.toList()
+      ..sort((a, b) => b.total.compareTo(a.total));
+    return result;
+  }
+
+  // Saldo mensal acumulado dos últimos N meses, filtrado por conta
+  Future<List<MonthlyBalance>> getMonthlyBalancesByAccount(
+      int accountId, int monthCount) async {
+    final accountsList = await (select(accounts)
+          ..where((a) => a.id.equals(accountId)))
+        .get();
+    final initialBalance =
+        accountsList.isEmpty ? 0.0 : accountsList.first.initialBalance;
+
+    final now = DateTime.now();
+    final result = <MonthlyBalance>[];
+
+    for (int i = monthCount - 1; i >= 0; i--) {
+      final monthDate = DateTime(now.year, now.month - i);
+      final endOfMonth = i == 0
+          ? now
+          : DateTime(monthDate.year, monthDate.month + 1, 0, 23, 59, 59);
+      final endTs = endOfMonth.millisecondsSinceEpoch;
+
+      // Busca todas as transações da conta até este momento
+      final txList = await (select(transactions)
+            ..where((t) =>
+                t.accountId.equals(accountId) &
+                t.date.isSmallerOrEqualValue(endTs)))
+          .get();
+
+      double balance = initialBalance;
+      for (final t in txList) {
+        if (t.type == 'income') {
+          balance += t.amount;
+        } else if (t.type == 'expense') {
+          balance -= t.amount;
+        } else if (t.type == 'transfer') {
+          if (t.transferPairId != null) {
+            if (t.transferPairId! > t.id) {
+              balance -= t.amount; // saída
+            } else {
+              balance += t.amount; // entrada
+            }
+          }
+        }
+      }
+
+      // Descontar contribuições líquidas de metas vinculadas
+      final netGoalContributions =
+          await db.goalsDao.getNetContributionsByAccount(accountId);
+      balance -= netGoalContributions;
+
+      result.add(MonthlyBalance(
+        month: DateTime(monthDate.year, monthDate.month),
+        balance: balance,
+      ));
+    }
+
     return result;
   }
 

@@ -7,6 +7,7 @@ import '../../../core/database/database_provider.dart';
 import '../providers/accounts_provider.dart';
 import '../widgets/account_card.dart';
 import 'account_form_screen.dart';
+import 'account_detail_screen.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -156,7 +157,11 @@ class AccountsScreen extends ConsumerWidget {
                       return AccountCard(
                         account: account,
                         balanceAsync: balanceAsync,
-                        onTap: () {},
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => AccountDetailScreen(account: account),
+                          ),
+                        ),
                         onEdit: () => _openForm(context, account: account),
                         onDelete: () =>
                             _confirmDelete(context, ref, account.id),

@@ -13,6 +13,7 @@ import '../widgets/expenses_chart.dart';
 import '../widgets/balance_chart.dart';
 import '../widgets/upcoming_recurrences_widget.dart';
 import '../widgets/wealth_distribution_chart.dart';
+import '../../accounts/screens/account_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -321,58 +322,65 @@ class DashboardScreen extends ConsumerWidget {
                     final accountColor = account.color != null
                         ? Color(account.color!)
                         : AppColors.primary;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AccountDetailScreen(account: account),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: accountColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.account_balance_outlined,
-                              color: accountColor,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              account.name,
-                              style: AppTextStyles.body(textPrimary),
-                            ),
-                          ),
-                          ref
-                              .watch(accountBalanceProvider(account))
-                              .when(
-                            data: (balance) => Text(
-                              CurrencyUtils.format(balance),
-                              style: AppTextStyles.bodyBold(
-                                balance < 0
-                                    ? AppColors.danger
-                                    : textPrimary,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: accountColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.account_balance_outlined,
+                                color: accountColor,
+                                size: 18,
                               ),
                             ),
-                            loading: () => const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                account.name,
+                                style: AppTextStyles.body(textPrimary),
+                              ),
                             ),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
-                        ],
+                            ref
+                                .watch(accountBalanceProvider(account))
+                                .when(
+                              data: (balance) => Text(
+                                CurrencyUtils.format(balance),
+                                style: AppTextStyles.bodyBold(
+                                  balance < 0
+                                      ? AppColors.danger
+                                      : textPrimary,
+                                ),
+                              ),
+                              loading: () => const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              ),
+                              error: (_, __) => const SizedBox.shrink(),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
+                    ),
                   },
                   childCount: accounts.length,
                 ),
