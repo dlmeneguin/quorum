@@ -322,7 +322,7 @@ class DashboardScreen extends ConsumerWidget {
                     final accountColor = account.color != null
                         ? Color(account.color!)
                         : AppColors.primary;
-                    GestureDetector(
+                    return GestureDetector(
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => AccountDetailScreen(account: account),
@@ -380,7 +380,7 @@ class DashboardScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                    ),
+                    );
                   },
                   childCount: accounts.length,
                 ),
