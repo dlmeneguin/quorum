@@ -12,6 +12,7 @@ import '../providers/transactions_provider.dart';
 import 'transaction_form_screen.dart';
 import '../../accounts/screens/account_form_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
+import 'dart:async';
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -201,12 +202,12 @@ class TransactionsScreen extends ConsumerWidget {
           accounts.whenData((list) {
             if (list.isEmpty) {
               messenger.hideCurrentSnackBar();
-              messenger.showSnackBar(
+              final controller = messenger.showSnackBar(
                 SnackBar(
                   content: const Text(
                       'Crie uma conta antes de adicionar transações'),
                   backgroundColor: AppColors.danger,
-                  duration: const Duration(seconds: 6),
+                  duration: const Duration(days: 1),
                   action: SnackBarAction(
                     label: 'Criar conta',
                     textColor: Colors.white,
@@ -221,6 +222,9 @@ class TransactionsScreen extends ConsumerWidget {
                   ),
                 ),
               );
+              Timer(const Duration(seconds: 6), () {
+                controller.close();
+              });
             } else {
               _openForm(context, null);
             }
