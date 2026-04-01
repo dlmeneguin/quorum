@@ -39,6 +39,7 @@ class _TransactionFormScreenState
   int _installmentCount = 2;
   int _amountCents = 0;
   bool _isSaving = false;
+  String? _balanceError;
 
   final _paymentMethods = [
     'Débito',
@@ -62,7 +63,9 @@ class _TransactionFormScreenState
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
     );
-    setState(() {});
+    setState(() {
+      _balanceError = null;
+    });
   }
 
   @override
@@ -146,45 +149,46 @@ class _TransactionFormScreenState
     }
   }
 
-  Future<void> _saveSimple(
-      AppDatabase db, double amount, int dateTs, int now) async {
-    // Valida saldo para despesas
-    if (_selectedType == 'expense') {
-      final error = await BalanceValidator.checkSufficientBalance(
-        db: db,
-        accountId: _selectedAccountId!,
-        amount: amount,
-      );
-      if (error != null) {
-        setState(() => _isSaving = false);
-        _showError(error);
-        return;
-      }
-    }
-
-    final companion = TransactionsCompanion.insert(
+Future<void> _saveSimple(
+    AppDatabase db, double amount, int dateTs, int now) async {
+  if (_selectedType == 'expense') {
+    final error = await BalanceValidator.checkSufficientBalance(
+      db: db,
       accountId: _selectedAccountId!,
-      categoryId: Value(_selectedCategoryId),
-      type: Value(_selectedType),
       amount: amount,
-      date: dateTs,
-      description: Value(_descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim()),
-      paymentMethod: Value(_selectedPaymentMethod),
-      isRecurring: const Value(false),
-      createdAt: Value(now),
-      updatedAt: Value(now),
     );
-
-    if (widget.transaction == null) {
-      await db.transactionsDao.createTransaction(companion);
-    } else {
-      await db.transactionsDao.updateTransaction(
-        companion.copyWith(id: Value(widget.transaction!.id)),
-      );
+    if (error != null) {
+      setState(() {
+        _isSaving = false;
+        _balanceError = error;
+      });
+      return;
     }
   }
+
+  final companion = TransactionsCompanion.insert(
+    accountId: _selectedAccountId!,
+    categoryId: Value(_selectedCategoryId),
+    type: Value(_selectedType),
+    amount: amount,
+    date: dateTs,
+    description: Value(_descriptionController.text.trim().isEmpty
+        ? null
+        : _descriptionController.text.trim()),
+    paymentMethod: Value(_selectedPaymentMethod),
+    isRecurring: const Value(false),
+    createdAt: Value(now),
+    updatedAt: Value(now),
+  );
+
+  if (widget.transaction == null) {
+    await db.transactionsDao.createTransaction(companion);
+  } else {
+    await db.transactionsDao.updateTransaction(
+      companion.copyWith(id: Value(widget.transaction!.id)),
+    );
+  }
+}
 
   Future<void> _saveInstallments(
       AppDatabase db, double amount, int dateTs, int now) async {
@@ -195,8 +199,10 @@ class _TransactionFormScreenState
       amount: amount,
     );
     if (error != null) {
-      setState(() => _isSaving = false);
-      _showError(error);
+      setState(() {
+        _isSaving = false;
+        _balanceError = error;
+      });
       return;
     }
 
@@ -261,8 +267,10 @@ class _TransactionFormScreenState
       amount: amount,
     );
     if (error != null) {
-      setState(() => _isSaving = false);
-      _showError(error);
+      setState(() {
+        _isSaving = false;
+        _balanceError = error;
+      });
       return;
     }
 
@@ -415,6 +423,7 @@ class _TransactionFormScreenState
                   _amountCents <= 0 ? 'Informe um valor maior que zero' : null,
               decoration: InputDecoration(
                 hintText: '0,00',
+                errorText: _balanceError,
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 16, right: 8),
                   child: Text(
