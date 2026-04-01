@@ -32,7 +32,7 @@ class _TransactionFormScreenState
   DateTime _selectedDate = DateTime.now();
   int? _selectedCategoryId;
   int? _selectedAccountId;
-  int? _selectedToAccountId; // Para transferência
+  int? _selectedToAccountId;
   String? _selectedPaymentMethod;
   bool _isRecurring = false;
   bool _isInstallment = false;
@@ -54,7 +54,7 @@ class _TransactionFormScreenState
     final value = cents / 100;
     return value.toStringAsFixed(2).replaceAll('.', ',');
   }
-  
+
   void _onAmountChanged(String input) {
     final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
     _amountCents = int.tryParse(digits) ?? 0;
@@ -73,10 +73,8 @@ class _TransactionFormScreenState
     super.initState();
     if (widget.transaction != null) {
       final t = widget.transaction!;
-      if (widget.transaction != null) {
-        _amountCents = (widget.transaction!.amount * 100).round();
-        _amountController.text = _formatCents(_amountCents);
-      }
+      _amountCents = (widget.transaction!.amount * 100).round();
+      _amountController.text = _formatCents(_amountCents);
       _descriptionController.text = t.description ?? '';
       _selectedType = t.type;
       _selectedDate = DateTime.fromMillisecondsSinceEpoch(t.date);
@@ -85,8 +83,7 @@ class _TransactionFormScreenState
       _selectedPaymentMethod = t.paymentMethod;
       _isRecurring = t.isRecurring;
     }
-    
-    // Auto-seleciona a conta se houver apenas uma cadastrada
+
     if (widget.transaction == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final accounts = ref.read(accountsProvider);
@@ -128,71 +125,70 @@ class _TransactionFormScreenState
     final now = DateTime.now().millisecondsSinceEpoch;
 
     try {
+      bool success;
+
       if (_selectedType == 'transfer') {
-        // Transferência: gera dois lançamentos vinculados
-        await _saveTransfer(db, amount, dateTs, now);
+        success = await _saveTransfer(db, amount, dateTs, now);
       } else if (_isInstallment && widget.transaction == null) {
-        // Parcelamento: gera N lançamentos
-        await _saveInstallments(db, amount, dateTs, now);
+        success = await _saveInstallments(db, amount, dateTs, now);
       } else if (_isRecurring && widget.transaction == null) {
-        // Recorrente: salva o primeiro e marca como recorrente
-        await _saveRecurring(db, amount, dateTs, now);
+        success = await _saveRecurring(db, amount, dateTs, now);
       } else {
-        // Transação simples
-        await _saveSimple(db, amount, dateTs, now);
+        success = await _saveSimple(db, amount, dateTs, now);
       }
 
-      if (mounted) Navigator.of(context).pop();
+      if (success && mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() => _isSaving = false);
       _showError('Erro ao salvar: $e');
     }
   }
 
-Future<void> _saveSimple(
-    AppDatabase db, double amount, int dateTs, int now) async {
-  if (_selectedType == 'expense') {
-    final error = await BalanceValidator.checkSufficientBalance(
-      db: db,
-      accountId: _selectedAccountId!,
-      amount: amount,
-    );
-    if (error != null) {
-      setState(() {
-        _isSaving = false;
-        _balanceError = error;
-      });
-      return;
-    }
-  }
-
-  final companion = TransactionsCompanion.insert(
-    accountId: _selectedAccountId!,
-    categoryId: Value(_selectedCategoryId),
-    type: Value(_selectedType),
-    amount: amount,
-    date: dateTs,
-    description: Value(_descriptionController.text.trim().isEmpty
-        ? null
-        : _descriptionController.text.trim()),
-    paymentMethod: Value(_selectedPaymentMethod),
-    isRecurring: const Value(false),
-    createdAt: Value(now),
-    updatedAt: Value(now),
-  );
-
-  if (widget.transaction == null) {
-    await db.transactionsDao.createTransaction(companion);
-  } else {
-    await db.transactionsDao.updateTransaction(
-      companion.copyWith(id: Value(widget.transaction!.id)),
-    );
-  }
-}
-
-  Future<void> _saveInstallments(
+  // Retorna true se salvou, false se barrado por saldo insuficiente
+  Future<bool> _saveSimple(
       AppDatabase db, double amount, int dateTs, int now) async {
-    // Valida saldo para o total parcelado
+    if (_selectedType == 'expense') {
+      final error = await BalanceValidator.checkSufficientBalance(
+        db: db,
+        accountId: _selectedAccountId!,
+        amount: amount,
+      );
+      if (error != null) {
+        setState(() {
+          _isSaving = false;
+          _balanceError = error;
+        });
+        return false;
+      }
+    }
+
+    final companion = TransactionsCompanion.insert(
+      accountId: _selectedAccountId!,
+      categoryId: Value(_selectedCategoryId),
+      type: Value(_selectedType),
+      amount: amount,
+      date: dateTs,
+      description: Value(_descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim()),
+      paymentMethod: Value(_selectedPaymentMethod),
+      isRecurring: const Value(false),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    );
+
+    if (widget.transaction == null) {
+      await db.transactionsDao.createTransaction(companion);
+    } else {
+      await db.transactionsDao.updateTransaction(
+        companion.copyWith(id: Value(widget.transaction!.id)),
+      );
+    }
+    return true;
+  }
+
+  Future<bool> _saveInstallments(
+      AppDatabase db, double amount, int dateTs, int now) async {
     final error = await BalanceValidator.checkSufficientBalance(
       db: db,
       accountId: _selectedAccountId!,
@@ -203,7 +199,7 @@ Future<void> _saveSimple(
         _isSaving = false;
         _balanceError = error;
       });
-      return;
+      return false;
     }
 
     final installmentAmount = amount / _installmentCount;
@@ -232,13 +228,11 @@ Future<void> _saveSimple(
         ),
       );
     }
+    return true;
   }
 
-  Future<void> _saveRecurring(
+  Future<bool> _saveRecurring(
       AppDatabase db, double amount, int dateTs, int now) async {
-    // Salva apenas o lançamento original marcado como recorrente.
-    // Os meses futuros são calculados dinamicamente — não geramos
-    // filhos no banco, pois recorrente não tem prazo de fim.
     await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
         accountId: _selectedAccountId!,
@@ -256,11 +250,11 @@ Future<void> _saveSimple(
         updatedAt: Value(now),
       ),
     );
+    return true;
   }
 
-  Future<void> _saveTransfer(
+  Future<bool> _saveTransfer(
       AppDatabase db, double amount, int dateTs, int now) async {
-    // Valida saldo da conta origem antes de criar os lançamentos
     final error = await BalanceValidator.checkSufficientBalance(
       db: db,
       accountId: _selectedAccountId!,
@@ -271,7 +265,7 @@ Future<void> _saveSimple(
         _isSaving = false;
         _balanceError = error;
       });
-      return;
+      return false;
     }
 
     final desc = _descriptionController.text.trim().isEmpty
@@ -314,6 +308,7 @@ Future<void> _saveSimple(
         updatedAt: Value(now),
       ),
     );
+    return true;
   }
 
   void _showError(String message) {
@@ -379,6 +374,7 @@ Future<void> _saveSimple(
                     onTap: () => setState(() {
                       _selectedType = 'expense';
                       _selectedCategoryId = null;
+                      _balanceError = null;
                     }),
                   ),
                 ),
@@ -392,6 +388,7 @@ Future<void> _saveSimple(
                     onTap: () => setState(() {
                       _selectedType = 'income';
                       _selectedCategoryId = null;
+                      _balanceError = null;
                     }),
                   ),
                 ),
@@ -405,6 +402,7 @@ Future<void> _saveSimple(
                     onTap: () => setState(() {
                       _selectedType = 'transfer';
                       _selectedCategoryId = null;
+                      _balanceError = null;
                     }),
                   ),
                 ),
@@ -442,7 +440,9 @@ Future<void> _saveSimple(
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                    color: isDark
+                        ? AppColors.borderDark
+                        : AppColors.borderLight,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -520,8 +520,10 @@ Future<void> _saveSimple(
                               style: AppTextStyles.body(textPrimary)),
                         ))
                     .toList(),
-                onChanged: (v) =>
-                    setState(() => _selectedAccountId = v),
+                onChanged: (v) => setState(() {
+                  _selectedAccountId = v;
+                  _balanceError = null;
+                }),
                 isDark: isDark,
               ),
               loading: () => const CircularProgressIndicator(),
@@ -635,11 +637,10 @@ Future<void> _saveSimple(
               _SectionLabel('Opções', textSecondary),
               const SizedBox(height: 8),
 
-              // Recorrente
               _OptionTile(
                 icon: Icons.repeat_rounded,
                 label: 'Recorrente mensal',
-                subtitle: 'Repete automaticamente todo mês por 12 meses',
+                subtitle: 'Repete automaticamente todo mês',
                 value: _isRecurring,
                 color: AppColors.primary,
                 isDark: isDark,
@@ -652,7 +653,6 @@ Future<void> _saveSimple(
               ),
               const SizedBox(height: 8),
 
-              // Parcelado
               _OptionTile(
                 icon: Icons.credit_card_outlined,
                 label: 'Parcelado',
@@ -668,7 +668,6 @@ Future<void> _saveSimple(
                 }),
               ),
 
-              // Número de parcelas
               if (_isInstallment) ...[
                 const SizedBox(height: 16),
                 _SectionLabel('Número de parcelas', textSecondary),
@@ -704,7 +703,7 @@ Future<void> _saveSimple(
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                         _amountCents > 0
+                        _amountCents > 0
                             ? '${CurrencyUtils.format(_amountCents / 100 / _installmentCount)} / parcela'
                             : '',
                         style: AppTextStyles.label(textSecondary),
@@ -750,7 +749,7 @@ Future<void> _saveSimple(
   }
 }
 
-// Widgets auxiliares
+// ── Widgets auxiliares ──
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -800,7 +799,8 @@ class _TypeButton extends StatelessWidget {
               label,
               style: AppTextStyles.dmSans(
                 fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? color : Colors.grey,
               ),
             ),
@@ -910,7 +910,8 @@ class _OptionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: AppTextStyles.bodyBold(textPrimary)),
-                Text(subtitle, style: AppTextStyles.label(textSecondary)),
+                Text(subtitle,
+                    style: AppTextStyles.label(textSecondary)),
               ],
             ),
           ),

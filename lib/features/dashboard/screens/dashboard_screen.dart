@@ -235,18 +235,6 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Line chart: evolução do patrimônio ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: balanceHistoryAsync.when(
-                data: (history) => BalanceChart(data: history),
-                loading: () => _loadingCard(surfaceColor, borderColor),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-            ),
-          ),
-
           // ── Donut chart: distribuição do patrimônio ──
           SliverToBoxAdapter(
             child: Padding(
@@ -255,6 +243,18 @@ class DashboardScreen extends ConsumerWidget {
                 data: (slices) => slices.isEmpty
                     ? const SizedBox.shrink()
                     : WealthDistributionChart(slices: slices),
+                loading: () => _loadingCard(surfaceColor, borderColor),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+          // ── Line chart: evolução do patrimônio ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: balanceHistoryAsync.when(
+                data: (history) => BalanceChart(data: history),
                 loading: () => _loadingCard(surfaceColor, borderColor),
                 error: (_, __) => const SizedBox.shrink(),
               ),
