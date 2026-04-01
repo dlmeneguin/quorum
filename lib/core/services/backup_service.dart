@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../database/app_database.dart';
+import '../../shared/theme/app_colors.dart';
 
 class BackupService {
   final AppDatabase db;
@@ -41,16 +42,42 @@ class BackupService {
     final jsonString =
         const JsonEncoder.withIndent('  ').convert(payload);
 
-    final tempDir = await getTemporaryDirectory();
     final fileName =
         'quorum_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
-    final file = File('${tempDir.path}/$fileName');
-    await file.writeAsString(jsonString);
 
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      subject: 'Quórum — Backup $fileName',
-    );
+    if (Platform.isWindows) {
+      // No Windows: abre diálogo "Salvar como" nativo
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Salvar backup do Quórum',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (savePath == null) return; // usuário cancelou
+
+      final file = File(savePath);
+      await file.writeAsString(jsonString);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup salvo em $savePath'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } else {
+      // No Android e outros: compartilha via share sheet
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsString(jsonString);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: fileName,
+      );
+    }
   }
 
   Future<String> importBackup() async {

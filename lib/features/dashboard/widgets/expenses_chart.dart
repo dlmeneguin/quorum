@@ -79,125 +79,71 @@ class _ExpensesChartState extends State<ExpensesChart> {
           Text('Gastos por categoria',
               style: AppTextStyles.sectionTitle(textPrimary)),
           const SizedBox(height: 20),
+
+          // ── Donut + painel lateral ──
           Row(
             children: [
-              // Donut com info central ao toque
               SizedBox(
                 width: 140,
                 height: 140,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PieChart(
-                      PieChartData(
-                        pieTouchData: PieTouchData(
-                          touchCallback: (event, response) {
-                            setState(() {
-                              if (!event.isInterestedForInteractions ||
-                                  response == null ||
-                                  response.touchedSection == null) {
-                                _touchedIndex = -1;
-                                return;
-                              }
-                              _touchedIndex = response
-                                  .touchedSection!.touchedSectionIndex;
-                            });
-                          },
-                        ),
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 44,
-                        sections: widget.expenses
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                          final i = entry.key;
-                          final expense = entry.value;
-                          final isTouched = i == _touchedIndex;
-
-                          return PieChartSectionData(
-                            color: Color(expense.categoryColor),
-                            value: expense.total,
-                            title: '',
-                            radius: isTouched ? 34 : 26,
-                          );
-                        }).toList(),
-                      ),
+                child: PieChart(
+                  PieChartData(
+                    pieTouchData: PieTouchData(
+                      touchCallback: (event, response) {
+                        setState(() {
+                          if (!event.isInterestedForInteractions ||
+                              response == null ||
+                              response.touchedSection == null) {
+                            _touchedIndex = -1;
+                            return;
+                          }
+                          _touchedIndex = response
+                              .touchedSection!.touchedSectionIndex;
+                        });
+                      },
                     ),
-                    // Info central: percentual quando tocado, total geral quando não
-                    touched != null
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${(touched.total / total * 100).toStringAsFixed(0)}%',
-                                style: AppTextStyles.splineSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(touched.categoryColor),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'total',
-                                style: AppTextStyles.label(textSecondary),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                CurrencyUtils.formatCompact(total),
-                                style: AppTextStyles.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ],
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    sections: widget.expenses
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                      final i = entry.key;
+                      final expense = entry.value;
+                      final isTouched = i == _touchedIndex;
+
+                      return PieChartSectionData(
+                        color: Color(expense.categoryColor),
+                        value: expense.total,
+                        title: '',
+                        radius: isTouched ? 36 : 28,
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
               const SizedBox(width: 20),
-              // Legenda: mostra detalhes da fatia tocada ou lista resumida
+              // Painel lateral — mesma lógica do WealthDistributionChart
               Expanded(
                 child: touched != null
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Color(touched.categoryColor),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  touched.categoryName,
-                                  style:
-                                      AppTextStyles.bodyBold(textPrimary),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
+                          Text(touched.categoryName,
+                              style: AppTextStyles.bodyBold(textPrimary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
                           Text(
                             CurrencyUtils.format(touched.total),
                             style: AppTextStyles.splineSans(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: Color(touched.categoryColor),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             '${(touched.total / total * 100).toStringAsFixed(1)}% do total',
                             style: AppTextStyles.label(textSecondary),
@@ -205,70 +151,75 @@ class _ExpensesChartState extends State<ExpensesChart> {
                         ],
                       )
                     : Column(
-                        children: widget.expenses.take(5).map((expense) {
-                          final percentage =
-                              expense.total / total * 100;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: Color(expense.categoryColor),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    expense.categoryName,
-                                    style: AppTextStyles.label(
-                                        textSecondary),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Text(
-                                  '${percentage.toStringAsFixed(0)}%',
-                                  style: AppTextStyles.label(textPrimary),
-                                ),
-                              ],
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Total',
+                              style: AppTextStyles.label(textSecondary)),
+                          const SizedBox(height: 4),
+                          Text(
+                            CurrencyUtils.format(total),
+                            style: AppTextStyles.splineSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
                             ),
-                          );
-                        }).toList(),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Toque em uma fatia\npara ver detalhes',
+                            style: AppTextStyles.label(textSecondary),
+                          ),
+                        ],
                       ),
               ),
             ],
           ),
+
           const SizedBox(height: 16),
-          const Divider(),
+          const Divider(height: 1),
           const SizedBox(height: 12),
-          // Lista detalhada completa
-          ...widget.expenses.map((expense) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Color(expense.categoryColor),
-                        shape: BoxShape.circle,
-                      ),
+
+          // ── Legenda completa ──
+          ...widget.expenses.map((expense) {
+            final pct = expense.total / total * 100;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Color(expense.categoryColor),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(expense.categoryName,
-                          style: AppTextStyles.body(textPrimary)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      expense.categoryName,
+                      style: AppTextStyles.body(textPrimary),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      CurrencyUtils.format(expense.total),
-                      style: AppTextStyles.bodyBold(textPrimary),
+                  ),
+                  Text(
+                    '${pct.toStringAsFixed(0)}%',
+                    style: AppTextStyles.label(textSecondary),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    CurrencyUtils.format(expense.total),
+                    style: AppTextStyles.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
