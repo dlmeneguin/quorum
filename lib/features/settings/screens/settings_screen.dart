@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import 'categories_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/database/database_provider.dart';
+import '../../../core/services/backup_service.dart';
+import '../providers/theme_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
@@ -40,6 +44,19 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Aparência ──
+                  Text('Aparência',
+                      style: AppTextStyles.label(textSecondary)),
+                  const SizedBox(height: 8),
+                  _ThemeSelector(
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
+                  const SizedBox(height: 24),
+          
+                  // ── Personalização ──
                   Text('Personalização',
                       style: AppTextStyles.label(textSecondary)),
                   const SizedBox(height: 8),
@@ -58,11 +75,137 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+          
+                  // ── Dados ──
+                  Text('Dados', style: AppTextStyles.label(textSecondary)),
+                  const SizedBox(height: 8),
+                  _SettingsItem(
+                    icon: Icons.upload_outlined,
+                    label: 'Exportar backup',
+                    subtitle: 'Salvar todos os dados em arquivo JSON',
+                    color: AppColors.success,
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    onTap: () async {
+                      final service =
+                          BackupService(ref.read(databaseProvider));
+                      await service.exportBackup(context);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsItem(
+                    icon: Icons.download_outlined,
+                    label: 'Importar backup',
+                    subtitle: 'Restaurar dados de um arquivo JSON',
+                    color: AppColors.accent,
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    onTap: () async {
+                      final service =
+                          BackupService(ref.read(databaseProvider));
+                      final message = await service.importBackup();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(message),
+                            backgroundColor: message.contains('sucesso')
+                                ? AppColors.success
+                                : AppColors.danger,
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeSelector extends ConsumerWidget {
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  const _ThemeSelector({
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentMode = ref.watch(themeModeProvider);
+
+    final options = [
+      (ThemeMode.light, Icons.light_mode_outlined, 'Claro'),
+      (ThemeMode.dark, Icons.dark_mode_outlined, 'Escuro'),
+      (ThemeMode.system, Icons.brightness_auto_outlined, 'Sistema'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: options.map((option) {
+          final (mode, icon, label) = option;
+          final isSelected = currentMode == mode;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () =>
+                  ref.read(themeModeProvider.notifier).state = mode,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 18,
+                      color: isSelected
+                          ? Colors.white
+                          : textSecondary,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: AppTextStyles.dmSans(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: isSelected
+                            ? Colors.white
+                            : textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
