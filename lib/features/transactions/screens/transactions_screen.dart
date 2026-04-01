@@ -206,6 +206,7 @@ class TransactionsScreen extends ConsumerWidget {
                   content: const Text(
                       'Crie uma conta antes de adicionar transações'),
                   backgroundColor: AppColors.danger,
+                  duration: const Duration(seconds: 6),
                   action: SnackBarAction(
                     label: 'Criar conta',
                     textColor: Colors.white,

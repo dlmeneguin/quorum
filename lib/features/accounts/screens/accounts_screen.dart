@@ -189,12 +189,65 @@ class AccountsScreen extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, int id) async {
+    final db = ref.read(databaseProvider);
+  
+    // Busca as dependências antes de exibir o diálogo
+    final counts = await db.accountsDao.getAccountDependencyCounts(id);
+  
+    if (!context.mounted) return;
+  
+    // Monta a descrição do impacto
+    final List<String> impacts = [];
+    if (counts.transactions > 0) {
+      impacts.add(
+          '${counts.transactions} transaç${counts.transactions == 1 ? 'ão' : 'ões'}');
+    }
+    if (counts.goals > 0) {
+      impacts.add('${counts.goals} meta${counts.goals == 1 ? '' : 's'}');
+    }
+  
+    final String impactText = impacts.isEmpty
+        ? 'Esta conta não possui transações ou metas vinculadas.'
+        : 'Serão excluídos permanentemente: ${impacts.join(' e ')} vinculados a esta conta.';
+  
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Excluir conta'),
-        content: const Text(
-            'Tem certeza? Esta ação não pode ser desfeita.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(impactText),
+            if (impacts.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppColors.danger.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 16, color: AppColors.danger),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Esta ação é permanente e não pode ser desfeita.',
+                        style: TextStyle(
+                            color: AppColors.danger, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -204,15 +257,14 @@ class AccountsScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger),
-            child: const Text('Excluir'),
+            child: const Text('Excluir tudo'),
           ),
         ],
       ),
     );
-
+  
     if (confirmed == true) {
-      final db = ref.read(databaseProvider);
-      await db.accountsDao.deactivateAccount(id);
+      await db.accountsDao.deleteAccountCascade(id);
     }
   }
 }
