@@ -37,7 +37,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    // Detecta se é desktop (Windows) ou mobile (Android)
     final isDesktop = MediaQuery.of(context).size.width >= 600;
 
     if (isDesktop) {
@@ -76,6 +75,7 @@ class _DesktopLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSnoopy = colors.primary == AppColors.snoopyPrimary;
     final borderColor =
         isDark ? AppColors.borderDark : AppColors.borderLight;
 
@@ -121,6 +121,15 @@ class _DesktopLayout extends StatelessWidget {
                     onTap: () => onDestinationSelected(i),
                   );
                 }),
+
+                // Alberto na sidebar — só no tema Snoopy
+                if (isSnoopy) ...[
+                  const Spacer(),
+                  const AlbertoSidebarWidget(sidebarWidth: 220),
+                ] else
+                  const Spacer(),
+
+                const SizedBox(height: 8),
               ],
             ),
           ),

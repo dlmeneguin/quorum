@@ -225,6 +225,95 @@ class AlbertoStandingPainter extends CustomPainter {
 }
 
 // ────────────────────────────────────────────────────────────
+// ALBERTO — Sidebar (Corpo mais curto e levemente mais largo)
+// ────────────────────────────────────────────────────────────
+class AlbertoSidebarPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // --- DESLOCAMENTO GLOBAL (Escorado na Sidebar) ---
+    canvas.translate(w * 0.1351, 0); 
+
+    final bodyPaint = Paint()..color = Colors.white;
+    final blackPaint = Paint()..color = Colors.black;
+    final snoutPaint = Paint()..color = const Color(0xFFB07D62);
+
+    // 1. PATAS TRASEIRAS (Fixas na base)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.66, h * 0.88), width: w * 0.05, height: h * 0.03), blackPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.70, h * 0.89), width: w * 0.05, height: h * 0.03), blackPaint);
+
+    // 2. CORPO (Pivô de inclinação)
+    final pivotX = w * 0.70; 
+    final pivotY = h * 0.95;
+
+    canvas.save(); // [SAVE 1] - Início da inclinação do corpo
+    canvas.translate(pivotX, pivotY);
+    canvas.rotate(0.35); 
+    canvas.translate(-pivotX, -pivotY);
+
+    // Desenho do Tronco (Afinado)
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(w * 0.68, h * 0.62), width: w * 0.09, height: h * 0.55),
+      bodyPaint,
+    );
+
+    // 3. PATAS DIANTEIRAS (Mais grossas e conectadas)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.72, h * 0.35), width: w * 0.07, height: h * 0.05), blackPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.75, h * 0.48), width: w * 0.07, height: h * 0.05), blackPaint);
+
+    // 4. CABEÇA (Dentro do contexto de rotação do corpo)
+    final headCenter = Offset(w * 0.64, h * 0.28); 
+    
+    canvas.save(); // [SAVE 2] - Rotação específica da cabeça
+    canvas.translate(headCenter.dx, headCenter.dy);
+    canvas.rotate(-1.047); 
+    
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.08, -h * 0.04), width: w * 0.03, height: h * 0.14), blackPaint);
+    canvas.drawCircle(Offset.zero, w * 0.09, bodyPaint); // Cabeça maior
+    canvas.drawOval(Rect.fromCenter(center: Offset(-w * 0.08, -h * 0.02), width: w * 0.05, height: h * 0.15), blackPaint);
+    canvas.drawCircle(Offset(-w * 0.035, 0), w * 0.014, blackPaint); 
+    canvas.drawCircle(Offset(w * 0.025, -h * 0.025), w * 0.014, blackPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.05, h * 0.045), width: w * 0.06, height: h * 0.04), snoutPaint);
+    canvas.drawCircle(Offset(w * 0.07, h * 0.035), w * 0.012, blackPaint);
+
+    canvas.restore(); // [RESTORE 2] - Fecha cabeça
+    canvas.restore(); // [RESTORE 1] - Fecha corpo
+
+    // 5. RABO (AJUSTADO: Conectado ao corpo em 0.68 e isolado para rotação própria)
+    final tOX = w * 0.68; // Movido de 0.63 -> 0.68 para a direita
+    final tOY = h * 0.75;
+
+    canvas.save(); 
+    canvas.translate(tOX, tOY);
+    canvas.rotate(-0.174); // Mantendo os 10 graus anti-horário
+    canvas.translate(-tOX, -tOY);
+
+    final tailPath = Path()
+      ..moveTo(tOX, tOY) 
+      ..quadraticBezierTo(
+        w * 0.56, h * 0.78, // Ajustado proporcionalmente à nova origem
+        w * 0.61, h * 0.68  // Pontinha do rabo
+      );
+    
+    canvas.drawPath(
+      tailPath, 
+      Paint()
+        ..color = Colors.black
+        ..strokeWidth = w * 0.015
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+    );
+    
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ────────────────────────────────────────────────────────────
 // WIDGETS
 // ────────────────────────────────────────────────────────────
 
@@ -270,6 +359,12 @@ class AlbertoStandingWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+class AlbertoSidebarWidget extends StatelessWidget {
+  final double sidebarWidth;
+  const AlbertoSidebarWidget({super.key, this.sidebarWidth = 220});
+  @override Widget build(BuildContext context) => SizedBox(width: sidebarWidth, height: sidebarWidth * 0.50, child: CustomPaint(painter: AlbertoSidebarPainter()));
 }
 
 // ────────────────────────────────────────────────────────────
