@@ -14,7 +14,7 @@ import '../widgets/balance_chart.dart';
 import '../widgets/upcoming_recurrences_widget.dart';
 import '../widgets/wealth_distribution_chart.dart';
 import '../../accounts/screens/account_detail_screen.dart';
-import '../../../shared/widgets/snoopy_widgets.dart';
+import '../../../shared/widgets/alberto_widgets.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});

@@ -13,7 +13,7 @@ import 'transaction_form_screen.dart';
 import '../../accounts/screens/account_form_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
 import 'dart:async';
-import '../../../shared/widgets/snoopy_widgets.dart';
+import '../../../shared/widgets/alberto_widgets.dart';
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});

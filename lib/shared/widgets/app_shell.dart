@@ -7,7 +7,7 @@ import '../../features/transactions/screens/transactions_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/goals/screens/goals_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import 'snoopy_widgets.dart';
+import 'alberto_widgets.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});

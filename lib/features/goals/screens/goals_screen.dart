@@ -9,7 +9,7 @@ import '../providers/goals_provider.dart';
 import '../widgets/goal_card.dart';
 import '../widgets/goal_form_screen.dart';
 import 'goal_detail_screen.dart';
-import '../../../shared/widgets/snoopy_widgets.dart';
+import '../../../shared/widgets/alberto_widgets.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});

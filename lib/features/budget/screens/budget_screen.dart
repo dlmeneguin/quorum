@@ -10,7 +10,7 @@ import '../../dashboard/widgets/month_selector.dart';
 import '../providers/budget_provider.dart';
 import '../widgets/budget_card.dart';
 import '../widgets/budget_form_dialog.dart';
-import '../../../shared/widgets/snoopy_widgets.dart';
+import '../../../shared/widgets/alberto_widgets.dart';
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
