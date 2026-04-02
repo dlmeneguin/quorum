@@ -12,6 +12,7 @@ class AlbertoOnRoofPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
+    // -- Telhado e Parede --
     final roofPaint = Paint()..color = roofColor;
     final roofPath = Path()
       ..moveTo(0, h * 0.55)
@@ -33,23 +34,45 @@ class AlbertoOnRoofPainter extends CustomPainter {
       doorPaint,
     );
 
+    // -- Alberto --
     final bodyPaint = Paint()..color = Colors.white;
     final blackPaint = Paint()..color = Colors.black;
     final snoutPaint = Paint()..color = const Color(0xFFB07D62);
 
+    // 1. Rabo
     final tailPath = Path()
       ..moveTo(w * 0.23, h * 0.28)
       ..quadraticBezierTo(w * 0.10, h * 0.18, w * 0.17, h * 0.12);
-    canvas.drawPath(tailPath, Paint()..color = Colors.black..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    canvas.drawPath(
+      tailPath,
+      Paint()
+        ..color = Colors.black
+        ..strokeWidth = w * 0.025
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+    );
 
+    // 2. Orelha Direita (Atrás da cabeça)
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.80, h * 0.20), width: w * 0.08, height: h * 0.15), blackPaint);
+
+    // 3. Corpo (Base branca)
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.45, h * 0.35), width: w * 0.50, height: h * 0.18), bodyPaint);
+
+    // 4. Cabeça
     canvas.drawCircle(Offset(w * 0.70, h * 0.28), w * 0.15, bodyPaint);
+
+    // 5. PATAS (Desenhadas DEPOIS do corpo)
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.32, h * 0.42), width: w * 0.12, height: h * 0.07), blackPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.48, h * 0.42), width: w * 0.12, height: h * 0.07), blackPaint);
+
+    // 6. Detalhes do Rosto e Orelha Esquerda (Frente)
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.60, h * 0.20), width: w * 0.08, height: h * 0.15), blackPaint);
+    
+    // Olhos
     canvas.drawCircle(Offset(w * 0.75, h * 0.18), w * 0.02, blackPaint);
     canvas.drawCircle(Offset(w * 0.83, h * 0.18), w * 0.02, blackPaint);
+
+    // Focinho e Nariz
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.81, h * 0.30), width: w * 0.13, height: h * 0.08), snoutPaint);
     canvas.drawCircle(Offset(w * 0.85, h * 0.29), w * 0.018, blackPaint);
   }
@@ -58,7 +81,7 @@ class AlbertoOnRoofPainter extends CustomPainter {
 }
 
 // ────────────────────────────────────────────────────────────
-// ALBERTO — sentado (Transações) - ALTURA DA CABEÇA E ORELHA CALIBRADAS
+// ALBERTO — sentado (Transações) - REFERÊNCIA DE TAMANHO
 // ────────────────────────────────────────────────────────────
 class AlbertoSittingPainter extends CustomPainter {
   @override
@@ -69,51 +92,28 @@ class AlbertoSittingPainter extends CustomPainter {
     final blackPaint = Paint()..color = Colors.black;
     final snoutPaint = Paint()..color = const Color(0xFFB07D62);
 
-    // 1. ORELHA DIREITA (Atrás da cabeça - fresta)
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(w * 0.68, h * 0.22), width: w * 0.14, height: h * 0.20),
-      blackPaint,
-    );
-
-    // 2. Rabo (Atrás do corpo)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.68, h * 0.22), width: w * 0.14, height: h * 0.20), blackPaint);
     final tailPath = Path()
       ..moveTo(w * 0.62, h * 0.85)
       ..quadraticBezierTo(w * 0.88, h * 0.85, w * 0.82, h * 0.65);
     canvas.drawPath(tailPath, Paint()..color = Colors.black..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
-
-    // 3. Corpo Alongado
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(w * 0.50, h * 0.65), width: w * 0.30, height: h * 0.65),
-      bodyPaint,
-    );
-
-    // 4. CABEÇA - Desenhada APÓS a orelha direita para sobrepor (Z-Index)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.50, h * 0.65), width: w * 0.30, height: h * 0.65), bodyPaint);
     canvas.drawCircle(Offset(w * 0.50, h * 0.25), w * 0.25, bodyPaint);
-
-    // 5. Patas
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.38, h * 0.60), width: w * 0.14, height: h * 0.07), blackPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.62, h * 0.60), width: w * 0.14, height: h * 0.07), blackPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.40, h * 0.94), width: w * 0.18, height: h * 0.10), blackPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.60, h * 0.94), width: w * 0.18, height: h * 0.10), blackPaint);
-
-    // 6. Detalhes do Rosto e Orelha Esquerda (Frente)
-    // CORREÇÃO: Movi o centro X da orelha de w * 0.35 para w * 0.28 (mais para a esquerda)
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.28, h * 0.22), width: w * 0.14, height: h * 0.20), blackPaint);
-    
-    // Olhos acompanham a descida da cabeça
     canvas.drawCircle(Offset(w * 0.42, h * 0.21), w * 0.024, blackPaint);
     canvas.drawCircle(Offset(w * 0.58, h * 0.21), w * 0.024, blackPaint);
-    
-    // Focinho e Nariz
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.64, h * 0.30), width: w * 0.16, height: h * 0.09), snoutPaint);
     canvas.drawCircle(Offset(w * 0.68, h * 0.29), w * 0.022, blackPaint);
   }
-
   @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ────────────────────────────────────────────────────────────
-// ALBERTO — de barriga para cima (Orçamento) - AJUSTE FINAL ORELHA
+// ALBERTO — de barriga para cima (Orçamento)
 // ────────────────────────────────────────────────────────────
 class AlbertoRelaxedPainter extends CustomPainter {
   @override
@@ -124,41 +124,17 @@ class AlbertoRelaxedPainter extends CustomPainter {
     final blackPaint = Paint()..color = Colors.black;
     final snoutPaint = Paint()..color = const Color(0xFFB07D62);
 
-    // 1. CAUDA (Atrás do corpo)
     final tailPath = Path()
       ..moveTo(w * 0.15, h * 0.62)
       ..quadraticBezierTo(w * 0.02, h * 0.45, w * 0.10, h * 0.25);
-    canvas.drawPath(
-      tailPath,
-      Paint()
-        ..color = Colors.black
-        ..strokeWidth = w * 0.035
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // 2. CORPO (Base horizontal)
+    canvas.drawPath(tailPath, Paint()..color = Colors.black..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.45, h * 0.60), width: w * 0.60, height: h * 0.28), bodyPaint);
-
-    // 3. CABEÇA (Círculo conectado ao corpo)
     canvas.drawCircle(Offset(w * 0.75, h * 0.50), w * 0.18, bodyPaint);
-
-    // 4. PATAS para cima
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.25, h * 0.46), width: w * 0.12, height: h * 0.08), blackPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.45, h * 0.46), width: w * 0.12, height: h * 0.08), blackPaint);
-
-    // 5. DETALHES DO ROSTO (INVERTIDOS)
-    // ORELHA: Maior (w*0.13, h*0.15) e mais para baixo (h*0.75)
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(w * 0.66, h * 0.75), width: w * 0.13, height: h * 0.15), 
-      blackPaint
-    );
-    
-    // Olhos na metade inferior
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.66, h * 0.75), width: w * 0.13, height: h * 0.15), blackPaint);
     canvas.drawCircle(Offset(w * 0.78, h * 0.58), w * 0.02, blackPaint); 
     canvas.drawCircle(Offset(w * 0.86, h * 0.58), w * 0.02, blackPaint); 
-
-    // Focinho e Nariz
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.88, h * 0.52), width: w * 0.12, height: h * 0.08), snoutPaint);
     canvas.drawCircle(Offset(w * 0.92, h * 0.51), w * 0.018, blackPaint);
   }
@@ -166,7 +142,7 @@ class AlbertoRelaxedPainter extends CustomPainter {
 }
 
 // ────────────────────────────────────────────────────────────
-// ALBERTO — em pé (Metas)
+// ALBERTO — Metas (Oi/Acenando - ORELHA DIREITA ALARGADA)
 // ────────────────────────────────────────────────────────────
 class AlbertoStandingPainter extends CustomPainter {
   @override
@@ -177,23 +153,74 @@ class AlbertoStandingPainter extends CustomPainter {
     final blackPaint = Paint()..color = Colors.black;
     final snoutPaint = Paint()..color = const Color(0xFFB07D62);
 
+    // 1. RABO (Lateral Esquerda - Atrás do corpo)
     final tailPath = Path()
-      ..moveTo(w * 0.80, h * 0.69) 
-      ..quadraticBezierTo(w * 0.95, h * 0.70, w * 0.88, h * 0.55);
-    canvas.drawPath(tailPath, Paint()..color = Colors.black..strokeWidth = w * 0.04..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.50, h * 0.54), width: w * 0.32, height: h * 0.65), bodyPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.38, h * 0.46), width: w * 0.16, height: h * 0.07), blackPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.62, h * 0.46), width: w * 0.16, height: h * 0.07), blackPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.40, h * 0.78), width: w * 0.18, height: h * 0.10), blackPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.60, h * 0.79), width: w * 0.18, height: h * 0.10), blackPaint);
-    canvas.drawCircle(Offset(w * 0.50, h * 0.25), w * 0.20, bodyPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.36, h * 0.20), width: w * 0.13, height: h * 0.18), blackPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.64, h * 0.18), width: w * 0.13, height: h * 0.18), blackPaint);
-    canvas.drawCircle(Offset(w * 0.46, h * 0.20), w * 0.022, blackPaint);
-    canvas.drawCircle(Offset(w * 0.54, h * 0.20), w * 0.022, blackPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.61, h * 0.27), width: w * 0.14, height: h * 0.08), snoutPaint);
-    canvas.drawCircle(Offset(w * 0.63, h * 0.25), w * 0.020, blackPaint);
+      ..moveTo(w * 0.35, h * 0.85)
+      ..quadraticBezierTo(w * 0.18, h * 0.85, w * 0.22, h * 0.65);
+    canvas.drawPath(
+      tailPath,
+      Paint()
+        ..color = Colors.black
+        ..strokeWidth = w * 0.04
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // 2. ORELHA DIREITA (Atrás/Fresta)
+    // CALIBRAÇÃO: Largura aumentada de 0.05 para 0.12 (Alargada)
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(w * 0.74, h * 0.16), width: w * 0.12, height: h * 0.18), 
+      blackPaint
+    );
+
+    // 3. CORPO (Alongado)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.50, h * 0.65), width: w * 0.32, height: h * 0.72), bodyPaint);
+
+    // 4. CABEÇA
+    canvas.drawCircle(Offset(w * 0.50, h * 0.20), w * 0.26, bodyPaint);
+
+    // 5. Pés (Patas Traseiras)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.38, h * 0.96), width: w * 0.18, height: h * 0.08), blackPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.62, h * 0.96), width: w * 0.18, height: h * 0.08), blackPaint);
+
+    // 6. PATA ESQUERDA (APOIADA)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.38, h * 0.60), width: w * 0.14, height: h * 0.07), blackPaint);
+
+    // 6.b PATA DIREITA E TRAÇOS (ZONA DE ROTAÇÃO)
+    final rotationCenter = Offset(w * 0.62, h * 0.57); 
+    canvas.save(); 
+    canvas.translate(rotationCenter.dx, rotationCenter.dy);
+    canvas.rotate(-0.4);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.10, -h * 0.02), width: w * 0.17, height: h * 0.06), blackPaint);
+
+    // 7. TRAÇOS DE MOVIMENTO
+    final motionPaint = Paint()
+      ..color = Colors.black.withOpacity(0.8)
+      ..strokeWidth = w * 0.010
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+      
+    final motionPath = Path();
+    motionPath.moveTo(w * 0.08, -h * 0.12); motionPath.quadraticBezierTo(w * 0.12, -h * 0.14, w * 0.16, -h * 0.12);
+    motionPath.moveTo(w * 0.08, -h * 0.09); motionPath.quadraticBezierTo(w * 0.12, -h * 0.11, w * 0.16, -h * 0.09);
+    motionPath.moveTo(w * 0.08, h * 0.05); motionPath.quadraticBezierTo(w * 0.12, h * 0.07, w * 0.16, h * 0.05);
+    motionPath.moveTo(w * 0.08, h * 0.08); motionPath.quadraticBezierTo(w * 0.12, h * 0.10, w * 0.16, h * 0.08);
+    canvas.drawPath(motionPath, motionPaint);
+    canvas.restore(); 
+
+    // 8. DETALHES DO ROSTO
+    // Orelha Esquerda (Frente)
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.28, h * 0.16), width: w * 0.14, height: h * 0.20), blackPaint);
+    
+    // Olhos
+    canvas.drawCircle(Offset(w * 0.44, h * 0.18), w * 0.024, blackPaint);
+    canvas.drawCircle(Offset(w * 0.56, h * 0.18), w * 0.024, blackPaint);
+    
+    // Focinho e Nariz
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.62, h * 0.26), width: w * 0.16, height: h * 0.08), snoutPaint);
+    canvas.drawCircle(Offset(w * 0.66, h * 0.25), w * 0.022, blackPaint);
   }
+
   @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
@@ -215,7 +242,7 @@ class AlbertoSittingWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: size, 
-      height: size * 1.3, // Proporção calibrada para garantir que o corpo longo e a cabeça caibam
+      height: size * 1.3, // Proporção calibrada
       child: CustomPaint(
         painter: AlbertoSittingPainter(),
       ),
@@ -231,8 +258,18 @@ class AlbertoRelaxedWidget extends StatelessWidget {
 
 class AlbertoStandingWidget extends StatelessWidget {
   final double size;
-  const AlbertoStandingWidget({super.key, this.size = 100});
-  @override Widget build(BuildContext context) => SizedBox(width: size * 0.85, height: size, child: CustomPaint(painter: AlbertoStandingPainter()));
+  const AlbertoStandingWidget({super.key, this.size = 120});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size, 
+      height: size * 1.3, // Proporção calibrada para o Alberto robusto/alongado
+      child: CustomPaint(
+        painter: AlbertoStandingPainter(),
+      ),
+    );
+  }
 }
 
 // ────────────────────────────────────────────────────────────
