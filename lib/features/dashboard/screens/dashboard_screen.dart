@@ -14,6 +14,7 @@ import '../widgets/balance_chart.dart';
 import '../widgets/upcoming_recurrences_widget.dart';
 import '../widgets/wealth_distribution_chart.dart';
 import '../../accounts/screens/account_detail_screen.dart';
+import '../../../shared/widgets/snoopy_widgets.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -43,78 +44,104 @@ class DashboardScreen extends ConsumerWidget {
         slivers: [
           // ── Header com saudação e saldo total ──
           SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primary.withOpacity(0.85),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            child: Builder(builder: (context) {
+              final isSnoopy = Theme.of(context).colorScheme.primary ==
+                  AppColors.snoopyPrimary;
+              return Container(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSnoopy
+                        ? [AppColors.snoopyHeaderStart, AppColors.snoopyHeaderEnd]
+                        : [AppColors.primary, AppColors.primary.withOpacity(0.85)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _greeting(),
-                              style: AppTextStyles.label(
-                                  Colors.white.withOpacity(0.8)),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              AppDateUtils.toFullDate(now),
-                              style: AppTextStyles.label(
-                                  Colors.white.withOpacity(0.6)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AccountsScreen(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _greeting(),
+                                style: AppTextStyles.label(
+                                    Colors.white.withOpacity(0.8)),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                AppDateUtils.toFullDate(now),
+                                style: AppTextStyles.label(
+                                    Colors.white.withOpacity(0.6)),
+                              ),
+                            ],
                           ),
                         ),
-                        icon: const Icon(
-                          Icons.account_balance_wallet_outlined,
-                          color: Colors.white,
+                        if (isSnoopy)
+                          const AlbertoOnRoofWidget(
+                            width: 110,
+                            height: 80,
+                            roofColor: Color(0xFF5C3D2A),
+                          )
+                        else
+                          IconButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AccountsScreen(),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Colors.white,
+                            ),
+                            tooltip: 'Gerenciar contas',
+                          ),
+                      ],
+                    ),
+                    if (isSnoopy) ...[
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AccountsScreen(),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.account_balance_wallet_outlined,
+                            color: Colors.white,
+                          ),
+                          tooltip: 'Gerenciar contas',
                         ),
-                        tooltip: 'Gerenciar contas',
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Patrimônio total',
-                    style: AppTextStyles.label(
-                        Colors.white.withOpacity(0.7)),
-                  ),
-                  const SizedBox(height: 6),
-                  totalBalanceAsync.when(
-                    data: (total) => Text(
-                      CurrencyUtils.format(total),
-                      style:
-                          AppTextStyles.dashboardNumber(Colors.white),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Patrimônio total',
+                      style: AppTextStyles.label(
+                          Colors.white.withOpacity(0.7)),
                     ),
-                    loading: () => Text(
-                      'Carregando...',
-                      style: AppTextStyles.dashboardNumber(
-                          Colors.white.withOpacity(0.5)),
+                    const SizedBox(height: 6),
+                    totalBalanceAsync.when(
+                      data: (total) => Text(
+                        CurrencyUtils.format(total),
+                        style: AppTextStyles.dashboardNumber(Colors.white),
+                      ),
+                      loading: () => Text(
+                        'Carregando...',
+                        style: AppTextStyles.dashboardNumber(
+                            Colors.white.withOpacity(0.5)),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            }),
           ),
 
           // ── Seletor de mês + resumo ──

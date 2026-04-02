@@ -9,6 +9,7 @@ import '../providers/goals_provider.dart';
 import '../widgets/goal_card.dart';
 import '../widgets/goal_form_screen.dart';
 import 'goal_detail_screen.dart';
+import '../../../shared/widgets/snoopy_widgets.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -56,8 +57,25 @@ class GoalsScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.flag_outlined,
-                            size: 48, color: textSecondary),
+                        Builder(builder: (ctx) {
+                          final isSnoopy = Theme.of(ctx).colorScheme.primary ==
+                              AppColors.snoopyPrimary;
+                          if (isSnoopy) {
+                            return Column(
+                              children: [
+                                const AlbertoStandingWidget(size: 90),
+                                const SizedBox(height: 8),
+                                ThoughtBubbleWidget(
+                                  text: 'Nenhuma meta ainda!',
+                                  bubbleColor: AppColors.snoopySurface,
+                                  textColor: AppColors.snoopyTextPrimary,
+                                ),
+                              ],
+                            );
+                          }
+                          return Icon(Icons.flag_outlined,
+                              size: 48, color: textSecondary);
+                        }),
                         const SizedBox(height: 16),
                         Text('Nenhuma meta criada',
                             style: AppTextStyles.body(textSecondary)),

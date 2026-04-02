@@ -10,6 +10,7 @@ import '../../dashboard/widgets/month_selector.dart';
 import '../providers/budget_provider.dart';
 import '../widgets/budget_card.dart';
 import '../widgets/budget_form_dialog.dart';
+import '../../../shared/widgets/snoopy_widgets.dart';
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
@@ -169,8 +170,25 @@ class BudgetScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.pie_chart_outline,
-                            size: 48, color: textSecondary),
+                        Builder(builder: (ctx) {
+                          final isSnoopy = Theme.of(ctx).colorScheme.primary ==
+                              AppColors.snoopyPrimary;
+                          if (isSnoopy) {
+                            return Column(
+                              children: [
+                                const AlbertoRelaxedWidget(size: 110),
+                                const SizedBox(height: 8),
+                                ThoughtBubbleWidget(
+                                  text: 'Hmm, sem orçamento ainda...',
+                                  bubbleColor: AppColors.snoopySurface,
+                                  textColor: AppColors.snoopyTextPrimary,
+                                ),
+                              ],
+                            );
+                          }
+                          return Icon(Icons.pie_chart_outline,
+                              size: 48, color: textSecondary);
+                        }),
                         const SizedBox(height: 16),
                         Text(
                           'Nenhum orçamento definido',

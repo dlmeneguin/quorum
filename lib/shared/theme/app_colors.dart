@@ -28,15 +28,20 @@ class AppColors {
   static const textSecondaryDark = Color(0xFF9CA3AF);
   static const borderDark = Color(0xFF2D3148);
 
-  // Tema Snoopy
+  // Tema Snoopy — paleta revisada
   static const snoopyPrimary = Color(0xFFD4607A);
-  static const snoopyPrimaryLight = Color(0xFFFFF0F3);
+  static const snoopyPrimaryLight = Color(0xFFF5D0DA);
   static const snoopyAccent = Color(0xFFE8957A);
-  static const snoopyBackground = Color(0xFFFFF5F7);
-  static const snoopySurface = Color(0xFFFFFFFF);
+  // Header do dashboard: marrom quente delicado
+  static const snoopyHeaderStart = Color(0xFF7A5C4A);
+  static const snoopyHeaderEnd = Color(0xFF9E7A62);
+  // Fundo geral: rosa mais escuro, confortável
+  static const snoopyBackground = Color(0xFFEDD5DC);
+  // Surface dos cards: rosa bem claro mas não branco
+  static const snoopySurface = Color(0xFFF7E8ED);
   static const snoopyTextPrimary = Color(0xFF3D1A24);
   static const snoopyTextSecondary = Color(0xFF8B5A67);
-  static const snoopyBorder = Color(0xFFF5C5D0);
+  static const snoopyBorder = Color(0xFFDFB8C4);
   static const snoopySuccess = Color(0xFF5B9E7A);
   static const snoopyDanger = Color(0xFFD94F4F);
 }

@@ -161,80 +161,77 @@ class AppTheme {
       );
 
   static ThemeData get snoopy => ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.light(
-          primary: AppColors.snoopyPrimary,
-          onPrimary: Colors.white,
-          secondary: AppColors.snoopyAccent,
-          onSecondary: Colors.white,
-          error: AppColors.snoopyDanger,
-          surface: AppColors.snoopySurface,
-          onSurface: AppColors.snoopyTextPrimary,
-        ),
-        scaffoldBackgroundColor: AppColors.snoopyBackground,
-        textTheme: GoogleFonts.dmSansTextTheme(),
-        appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.snoopyBackground,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          iconTheme: const IconThemeData(
-              color: AppColors.snoopyTextPrimary),
-          titleTextStyle: GoogleFonts.splineSans(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.snoopyTextPrimary,
+          useMaterial3: true,
+          colorScheme: ColorScheme.light(
+            primary: AppColors.snoopyPrimary,
+            onPrimary: Colors.white,
+            secondary: AppColors.snoopyAccent,
+            onSecondary: Colors.white,
+            error: AppColors.snoopyDanger,
+            surface: AppColors.snoopySurface,
+            onSurface: AppColors.snoopyTextPrimary,
           ),
-        ),
-        navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: AppColors.snoopySurface,
-          indicatorColor: AppColors.snoopyPrimaryLight,
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(
-                  color: AppColors.snoopyPrimary);
-            }
-            return const IconThemeData(
-                color: AppColors.snoopyTextSecondary);
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
+          scaffoldBackgroundColor: AppColors.snoopyBackground,
+          textTheme: GoogleFonts.dmSansTextTheme(),
+          appBarTheme: AppBarTheme(
+            backgroundColor: AppColors.snoopyBackground,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            iconTheme: const IconThemeData(color: AppColors.snoopyTextPrimary),
+            titleTextStyle: GoogleFonts.splineSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.snoopyTextPrimary,
+            ),
+          ),
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: AppColors.snoopySurface,
+            indicatorColor: AppColors.snoopyPrimaryLight,
+            iconTheme: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const IconThemeData(color: AppColors.snoopyPrimary);
+              }
+              return const IconThemeData(color: AppColors.snoopyTextSecondary);
+            }),
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.snoopyPrimary,
+                );
+              }
               return GoogleFonts.dmSans(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.snoopyPrimary,
+                color: AppColors.snoopyTextSecondary,
               );
-            }
-            return GoogleFonts.dmSans(
-              fontSize: 12,
-              color: AppColors.snoopyTextSecondary,
-            );
-          }),
-        ),
-        cardTheme: CardThemeData(
-          color: AppColors.snoopySurface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.snoopyBorder),
+            }),
           ),
-        ),
-        dividerColor: AppColors.snoopyBorder,
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.snoopySurface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.snoopyBorder),
+          cardTheme: CardThemeData(
+            color: AppColors.snoopySurface,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.snoopyBorder),
+            ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.snoopyBorder),
+          dividerColor: AppColors.snoopyBorder,
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: AppColors.snoopySurface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.snoopyBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.snoopyBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  const BorderSide(color: AppColors.snoopyPrimary, width: 2),
+            ),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(
-                color: AppColors.snoopyPrimary, width: 2),
-          ),
-        ),
-      );
+        );
 }

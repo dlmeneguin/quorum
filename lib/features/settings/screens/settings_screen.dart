@@ -152,7 +152,7 @@ class _ThemeSelector extends ConsumerWidget {
       (AppThemeMode.light, Icons.light_mode_outlined, 'Claro'),
       (AppThemeMode.dark, Icons.dark_mode_outlined, 'Escuro'),
       (AppThemeMode.system, Icons.brightness_auto_outlined, 'Sistema'),
-      (AppThemeMode.snoopy, Icons.favorite_outline_rounded, 'Snoopy'),
+      (AppThemeMode.snoopy, Icons.favorite_outline_rounded, 'Alberto'),
     ];
 
     return Container(

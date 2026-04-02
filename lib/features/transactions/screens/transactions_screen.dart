@@ -13,6 +13,7 @@ import 'transaction_form_screen.dart';
 import '../../accounts/screens/account_form_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
 import 'dart:async';
+import '../../../shared/widgets/snoopy_widgets.dart';
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -100,8 +101,25 @@ class TransactionsScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.receipt_long_outlined,
-                            size: 48, color: textSecondary),
+                        Builder(builder: (ctx) {
+                          final isSnoopy = Theme.of(ctx).colorScheme.primary ==
+                              AppColors.snoopyPrimary;
+                          if (isSnoopy) {
+                            return Column(
+                              children: [
+                                const AlbertoSittingWidget(size: 90),
+                                const SizedBox(height: 8),
+                                ThoughtBubbleWidget(
+                                  text: 'Nenhuma transação aqui...',
+                                  bubbleColor: AppColors.snoopySurface,
+                                  textColor: AppColors.snoopyTextPrimary,
+                                ),
+                              ],
+                            );
+                          }
+                          return Icon(Icons.receipt_long_outlined,
+                              size: 48, color: textSecondary);
+                        }),
                         const SizedBox(height: 16),
                         Text('Nenhuma transação no período',
                             style: AppTextStyles.body(textSecondary)),
