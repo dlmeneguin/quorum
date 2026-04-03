@@ -6,6 +6,7 @@ import '../../../core/database/database_provider.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class CategoryFormScreen extends ConsumerStatefulWidget {
   final Category? category;
@@ -81,7 +82,8 @@ class _CategoryFormScreenState
     } else {
       await db.categoriesDao.updateCategory(companion);
     }
-
+    
+    ref.read(syncServiceProvider).scheduleUpload();
     if (mounted) Navigator.of(context).pop();
   }
 

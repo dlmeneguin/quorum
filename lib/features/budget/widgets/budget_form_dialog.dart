@@ -7,6 +7,7 @@ import '../../../core/utils/currency.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../settings/providers/categories_provider.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 // Provider declarado fora da classe — recebe (year, month) como chave
 final _budgetsByMonthProvider = StreamProvider.autoDispose
@@ -116,6 +117,7 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
       await db.budgetsDao.updateBudget(companion);
     }
 
+    ref.read(syncServiceProvider).scheduleUpload();
     if (mounted) Navigator.of(context).pop();
   }
 

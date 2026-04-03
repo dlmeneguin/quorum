@@ -9,6 +9,7 @@ import '../../../core/utils/validators.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../accounts/providers/accounts_provider.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class GoalFormScreen extends ConsumerStatefulWidget {
   final Goal? goal;
@@ -161,6 +162,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
       await db.goalsDao.updateGoal(companion);
     }
 
+    ref.read(syncServiceProvider).scheduleUpload();
     if (mounted) Navigator.of(context).pop();
   }
 

@@ -7,6 +7,7 @@ import '../../../core/utils/currency.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class AccountFormScreen extends ConsumerStatefulWidget {
   final Account? account; // null = criação, preenchido = edição
@@ -90,7 +91,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     } else {
       await db.accountsDao.updateAccount(companion);
     }
-
+    ref.read(syncServiceProvider).scheduleUpload();
     if (mounted) Navigator.of(context).pop();
   }
 

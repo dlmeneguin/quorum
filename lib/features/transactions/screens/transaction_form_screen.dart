@@ -11,6 +11,7 @@ import '../../../shared/theme/app_text_styles.dart';
 import '../../settings/providers/categories_provider.dart';
 import '../../accounts/providers/accounts_provider.dart';
 import '../../../core/utils/balance_validator.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class TransactionFormScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
@@ -137,7 +138,10 @@ class _TransactionFormScreenState
         success = await _saveSimple(db, amount, dateTs, now);
       }
 
-      if (success && mounted) Navigator.of(context).pop();
+      if (success) {
+        ref.read(syncServiceProvider).scheduleUpload();
+        if (mounted) Navigator.of(context).pop();
+      }
     } catch (e) {
       setState(() => _isSaving = false);
       _showError('Erro ao salvar: $e');

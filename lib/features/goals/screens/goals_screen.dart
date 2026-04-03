@@ -10,6 +10,7 @@ import '../widgets/goal_card.dart';
 import '../widgets/goal_form_screen.dart';
 import 'goal_detail_screen.dart';
 import '../../../shared/widgets/alberto_widgets.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -209,6 +210,7 @@ class GoalsScreen extends ConsumerWidget {
         createdAt: Value(goal.createdAt),
       ),
     );
+    ref.read(syncServiceProvider).scheduleUpload();
   }
 
   Future<void> _confirmDelete(
@@ -237,6 +239,7 @@ class GoalsScreen extends ConsumerWidget {
     if (confirmed == true) {
       final db = ref.read(databaseProvider);
       await db.goalsDao.deleteGoal(id);
+      ref.read(syncServiceProvider).scheduleUpload();
     }
   }
 }

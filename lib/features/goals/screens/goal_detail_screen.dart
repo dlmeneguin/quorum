@@ -11,6 +11,7 @@ import '../../accounts/providers/accounts_provider.dart';
 import '../providers/goals_provider.dart';
 import '../widgets/goal_form_screen.dart';
 import '../../../core/utils/balance_validator.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class GoalDetailScreen extends ConsumerWidget {
   final String goalId;
@@ -729,6 +730,7 @@ class _GoalDetailContent extends ConsumerWidget {
                                   }
 
                                   if (ctx.mounted) Navigator.of(ctx).pop();
+                                  ref.read(syncServiceProvider).scheduleUpload();
                                 },
                           style: FilledButton.styleFrom(
                             backgroundColor: dialogColor,

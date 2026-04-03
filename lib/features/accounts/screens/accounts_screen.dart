@@ -8,6 +8,7 @@ import '../providers/accounts_provider.dart';
 import '../widgets/account_card.dart';
 import 'account_form_screen.dart';
 import 'account_detail_screen.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -270,6 +271,7 @@ class AccountsScreen extends ConsumerWidget {
   
     if (confirmed == true) {
       await db.accountsDao.deleteAccountCascade(id);
+      ref.read(syncServiceProvider).scheduleUpload();
     }
   }
 }

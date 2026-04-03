@@ -5,6 +5,7 @@ import '../../../shared/theme/app_text_styles.dart';
 import '../../../core/database/database_provider.dart';
 import '../providers/categories_provider.dart';
 import 'category_form_screen.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
@@ -140,6 +141,7 @@ class CategoriesScreen extends ConsumerWidget {
     if (confirmed == true) {
       final db = ref.read(databaseProvider);
       await db.categoriesDao.deleteCategory(id);
+      ref.read(syncServiceProvider).scheduleUpload();
     }
   }
 }

@@ -14,6 +14,7 @@ import '../../accounts/screens/account_form_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
 import 'dart:async';
 import '../../../shared/widgets/alberto_widgets.dart';
+import '../../../core/services/sync_service_provider.dart';
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -309,6 +310,7 @@ class TransactionsScreen extends ConsumerWidget {
     if (confirmed == true) {
       final db = ref.read(databaseProvider);
       await db.transactionsDao.deleteTransaction(id);
+      ref.read(syncServiceProvider).scheduleUpload();
     }
   }
 }
