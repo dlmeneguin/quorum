@@ -144,7 +144,7 @@ class BackupService {
           await db.into(db.transactions).insert(
                 TransactionsCompanion.insert(
                   id: raw['id'].toString(),
-                  accountId: raw['accountId'].toString(),
+                  accountId: raw['accountId'] as String,
                   categoryId: Value(raw['categoryId'] as String?),
                   type: Value(raw['type'] as String),
                   amount: (raw['amount'] as num).toDouble(),
@@ -194,7 +194,7 @@ class BackupService {
                   currentAmount: Value(
                       (raw['currentAmount'] as num? ?? 0).toDouble()),
                   targetDate: Value(raw['targetDate'] as int?),
-                  accountId: Value((raw['accountId'] as int?)?.toString()),
+                  accountId: Value(raw['accountId'] as String?),
                   color: Value(raw['color'] as int?),
                   icon: Value(raw['icon'] as String?),
                   status:

@@ -340,10 +340,19 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
   Future<void> _signIn() async {
     final user = await GoogleAuthService.signIn();
     if (user != null) {
-      await ref.read(syncServiceProvider).checkAndPullOnStartup();
-    }
-    if (mounted) {
       setState(() => _currentUser = user);
+      // Aguarda o frame antes de checar sync para garantir que o token propagou
+      await Future.delayed(const Duration(milliseconds: 500));
+      await ref.read(syncServiceProvider).checkAndPullOnStartup();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login cancelado ou falhou'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
     }
   }
 
@@ -355,8 +364,33 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
   }
 
   Future<void> _syncNow() async {
-    await ref.read(syncServiceProvider).forceUpload();
+    // Verifica autenticação antes de tentar
+    final user = await GoogleAuthService.currentUser();
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Faça login no Google para sincronizar'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      return;
+    }
+
     if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sincronizando...'),
+          duration: Duration(seconds: 30),
+        ),
+      );
+    }
+
+    await ref.read(syncServiceProvider).forceUpload();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Backup enviado ao Google Drive'),

@@ -48,8 +48,6 @@ class MergeService {
     return exportToJson();
   }
 
-  // ── Helpers de merge por tabela ──────────────────────────────────
-
   Future<void> _mergeAccounts(List remote) async {
     for (final raw in remote) {
       final remoteId = raw['id'] as String;
@@ -62,9 +60,9 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.accounts).insert(
-              AccountsCompanion(
-                id: Value(remoteId),
-                name: Value(raw['name'] as String),
+              AccountsCompanion.insert(
+                id: remoteId,
+                name: raw['name'] as String,
                 type: Value(raw['type'] as String? ?? 'checking'),
                 initialBalance:
                     Value((raw['initialBalance'] as num?)?.toDouble() ?? 0),
@@ -77,8 +75,7 @@ class MergeService {
               ),
             );
       } else {
-        final localUpdatedAt = existing.updatedAt;
-        if (remoteUpdatedAt > localUpdatedAt) {
+        if (remoteUpdatedAt > existing.updatedAt) {
           await (db.update(db.accounts)
                 ..where((a) => a.id.equals(remoteId)))
               .write(AccountsCompanion(
@@ -109,9 +106,9 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.categories).insert(
-              CategoriesCompanion(
-                id: Value(remoteId),
-                name: Value(raw['name'] as String),
+              CategoriesCompanion.insert(
+                id: remoteId,
+                name: raw['name'] as String,
                 type: Value(raw['type'] as String? ?? 'expense'),
                 color: Value(raw['color'] as int?),
                 icon: Value(raw['icon'] as String?),
@@ -151,13 +148,13 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.transactions).insert(
-              TransactionsCompanion(
-                id: Value(remoteId),
-                accountId: Value(raw['accountId'] as String),
+              TransactionsCompanion.insert(
+                id: remoteId,
+                accountId: raw['accountId'] as String,
+                amount: (raw['amount'] as num).toDouble(),
+                date: raw['date'] as int,
                 categoryId: Value(raw['categoryId'] as String?),
                 type: Value(raw['type'] as String? ?? 'expense'),
-                amount: Value((raw['amount'] as num).toDouble()),
-                date: Value(raw['date'] as int),
                 description: Value(raw['description'] as String?),
                 notes: Value(raw['notes'] as String?),
                 paymentMethod: Value(raw['paymentMethod'] as String?),
@@ -220,12 +217,12 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.budgets).insert(
-              BudgetsCompanion(
-                id: Value(remoteId),
-                categoryId: Value(raw['categoryId'] as String),
-                year: Value(raw['year'] as int),
-                month: Value(raw['month'] as int),
-                limitAmount: Value((raw['limitAmount'] as num).toDouble()),
+              BudgetsCompanion.insert(
+                id: remoteId,
+                categoryId: raw['categoryId'] as String,
+                year: raw['year'] as int,
+                month: raw['month'] as int,
+                limitAmount: (raw['limitAmount'] as num).toDouble(),
                 createdAt: Value(raw['createdAt'] as int? ?? 0),
                 updatedAt: Value(remoteUpdatedAt),
                 deletedAt: Value(remoteDeletedAt),
@@ -260,10 +257,10 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.goals).insert(
-              GoalsCompanion(
-                id: Value(remoteId),
-                name: Value(raw['name'] as String),
-                targetAmount: Value((raw['targetAmount'] as num).toDouble()),
+              GoalsCompanion.insert(
+                id: remoteId,
+                name: raw['name'] as String,
+                targetAmount: (raw['targetAmount'] as num).toDouble(),
                 targetDate: Value(raw['targetDate'] as int?),
                 accountId: Value(raw['accountId'] as String?),
                 color: Value(raw['color'] as int?),
@@ -306,11 +303,11 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.goalContributions).insert(
-              GoalContributionsCompanion(
-                id: Value(remoteId),
-                goalId: Value(raw['goalId'] as String),
-                amount: Value((raw['amount'] as num).toDouble()),
-                date: Value(raw['date'] as int),
+              GoalContributionsCompanion.insert(
+                id: remoteId,
+                goalId: raw['goalId'] as String,
+                amount: (raw['amount'] as num).toDouble(),
+                date: raw['date'] as int,
                 note: Value(raw['note'] as String?),
                 createdAt: Value(raw['createdAt'] as int? ?? 0),
                 updatedAt: Value(remoteUpdatedAt),
@@ -338,17 +335,19 @@ class MergeService {
 
     for (final goal in allGoals) {
       final contributions = await (db.select(db.goalContributions)
-            ..where((c) => c.goalId.equals(goal.id))
-            ..where((c) => c.deletedAt.isNull())) // Encadeamento funciona como AND
+            ..where((c) =>
+                c.goalId.equals(goal.id) & c.deletedAt.isNull()))
           .get();
 
-      final total = contributions.fold(0.0, (sum, c) => sum + c.amount);
+      final total =
+          contributions.fold(0.0, (sum, c) => sum + c.amount);
 
-      final newStatus = total >= goal.targetAmount && goal.deletedAt == null
-          ? 'completed'
-          : goal.status == 'completed' && total < goal.targetAmount
-              ? 'active'
-              : goal.status;
+      final newStatus =
+          total >= goal.targetAmount && goal.deletedAt == null
+              ? 'completed'
+              : goal.status == 'completed' && total < goal.targetAmount
+                  ? 'active'
+                  : goal.status;
 
       await (db.update(db.goals)..where((g) => g.id.equals(goal.id)))
           .write(GoalsCompanion(
@@ -366,25 +365,25 @@ class MergeService {
         .get();
 
     for (final account in deletedAccounts) {
-      // Transações vinculadas
       await (db.update(db.transactions)
-            ..where((t) => t.accountId.equals(account.id))
-            ..where((t) => t.deletedAt.isNull()))
+            ..where((t) =>
+                t.accountId.equals(account.id) &
+                t.deletedAt.isNull()))
           .write(TransactionsCompanion(
         deletedAt: Value(now),
         updatedAt: Value(now),
       ));
 
-      // Metas vinculadas
       final linkedGoals = await (db.select(db.goals)
-            ..where((g) => g.accountId.equals(account.id))
-            ..where((g) => g.deletedAt.isNull()))
+            ..where((g) =>
+                g.accountId.equals(account.id) &
+                g.deletedAt.isNull()))
           .get();
 
       for (final goal in linkedGoals) {
         await (db.update(db.goalContributions)
-              ..where((c) => c.goalId.equals(goal.id))
-              ..where((c) => c.deletedAt.isNull()))
+              ..where((c) =>
+                  c.goalId.equals(goal.id) & c.deletedAt.isNull()))
             .write(GoalContributionsCompanion(
           deletedAt: Value(now),
           updatedAt: Value(now),
@@ -399,23 +398,22 @@ class MergeService {
       }
     }
 
-    // Metas deletadas diretamente
     final deletedGoals = await (db.select(db.goals)
           ..where((g) => g.deletedAt.isNotNull()))
         .get();
 
     for (final goal in deletedGoals) {
       await (db.update(db.goalContributions)
-            ..where((c) => c.goalId.equals(goal.id))
-            ..where((c) => c.deletedAt.isNull()))
-        .write(GoalContributionsCompanion(
-          deletedAt: Value(now),
-          updatedAt: Value(now),
-        ));
+            ..where((c) =>
+                c.goalId.equals(goal.id) & c.deletedAt.isNull()))
+          .write(GoalContributionsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
     }
 
-    // Contribuições órfãs
-    final allContributions = await db.select(db.goalContributions).get();
+    final allContributions =
+        await db.select(db.goalContributions).get();
     for (final contribution in allContributions) {
       if (contribution.deletedAt != null) continue;
       final goal = await (db.select(db.goals)
