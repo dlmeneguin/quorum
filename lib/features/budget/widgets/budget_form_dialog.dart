@@ -154,36 +154,39 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
               const SizedBox(height: 8),
               categoriesAsync.when(
                 data: (categories) {
-                  final usedCategoryIds = isEditing
-                      ? <int>{}
+                  final availableCategories = isEditing
+                      ? categories
                       : existingBudgetsAsync.whenOrNull(
-                              data: (budgets) =>
-                                  budgets.map((b) => b.categoryId).toSet()) ??
-                          <int>{};
+                              data: (budgets) {
+                                final usedIds = budgets.map((b) => b.categoryId).toSet();
+                                return categories.where((c) => !usedIds.contains(c.id)).toList();
+                              }) ??
+                          categories;
 
-                  final availableCategories = categories
-                      .where((c) => !usedCategoryIds.contains(c.id))
-                      .toList();
+                  final uniqueCategories = {
+                    for (final c in availableCategories) c.id: c
+                  }.values.toList();
 
+                  // Se o value atual não existe na lista, reseta para null
+                  // Isso evita o assert do DropdownButton
+                  final safeValue = uniqueCategories.any((c) => c.id == _selectedCategoryId)
+                      ? _selectedCategoryId
+                      : null;
+                
                   return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.surfaceDark
-                          : AppColors.surfaceLight,
+                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isDark
-                            ? AppColors.borderDark
-                            : AppColors.borderLight,
+                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
                       ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _selectedCategoryId,
+                        value: safeValue,
                         hint: Text(
-                          availableCategories.isEmpty && !isEditing
+                          uniqueCategories.isEmpty && !isEditing
                               ? 'Todas as categorias já têm orçamento'
                               : 'Selecione a categoria',
                           style: AppTextStyles.body(textSecondary),
@@ -192,11 +195,10 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                         dropdownColor: isDark
                             ? AppColors.surfaceDark
                             : AppColors.surfaceLight,
-                        onChanged: isEditing || availableCategories.isEmpty
+                        onChanged: isEditing || uniqueCategories.isEmpty
                             ? null
-                            : (v) =>
-                                setState(() => _selectedCategoryId = v),
-                        items: availableCategories
+                            : (v) => setState(() => _selectedCategoryId = v),
+                        items: uniqueCategories    // <-- aqui
                             .map((c) => DropdownMenuItem(
                                   value: c.id,
                                   child: Row(
@@ -213,8 +215,7 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                                       ),
                                       const SizedBox(width: 10),
                                       Text(c.name,
-                                          style: AppTextStyles.body(
-                                              textPrimary)),
+                                          style: AppTextStyles.body(textPrimary)),
                                     ],
                                   ),
                                 ))
