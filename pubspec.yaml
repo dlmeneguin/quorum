@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  uuid: ^4.5.3
 
   flutter_localizations:
     sdk: flutter
@@ -41,6 +40,13 @@ dependencies:
   # Backup (import/export JSON)
   file_picker: ^8.1.2
   share_plus: ^10.1.2
+
+  #Sincronização google drive
+  google_sign_in: ^6.2.0
+  googleapis: ^13.2.0
+  shared_preferences: ^2.3.3
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:
