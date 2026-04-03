@@ -145,7 +145,7 @@ class BackupService {
                 TransactionsCompanion.insert(
                   id: raw['id'].toString(),
                   accountId: raw['accountId'].toString(),
-                  categoryId: Value((raw['categoryId'] as int?)?.toString()),
+                  categoryId: Value(raw['categoryId'] as String?),
                   type: Value(raw['type'] as String),
                   amount: (raw['amount'] as num).toDouble(),
                   date: raw['date'] as int,
@@ -157,16 +157,14 @@ class BackupService {
                       Value(raw['isRecurring'] as bool? ?? false),
                   recurrenceType:
                       Value(raw['recurrenceType'] as String?),
-                  recurrenceParentId:
-                      Value((raw['recurrenceParentId'] as int?)?.toString()),
+                  recurrenceParentId: Value(raw['recurrenceParentId'] as String?),
                   installmentTotal:
                       Value(raw['installmentTotal'] as int?),
                   installmentCurrent:
                       Value(raw['installmentCurrent'] as int?),
                   installmentGroupId:
                       Value(raw['installmentGroupId'] as String?),
-                  transferPairId:
-                      Value((raw['transferPairId'] as int?)?.toString()),
+                  transferPairId: Value(raw['transferPairId'] as String?),
                   createdAt: Value(raw['createdAt'] as int? ?? 0),
                   updatedAt: Value(raw['updatedAt'] as int? ?? 0),
                 ),
