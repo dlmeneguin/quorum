@@ -2,18 +2,20 @@ import 'package:drift/drift.dart';
 import 'accounts_table.dart';
 
 class Goals extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get name => text().withLength(min: 1, max: 100)();
   RealColumn get targetAmount => real()();
-  RealColumn get currentAmount =>
-      real().withDefault(const Constant(0))();
+  RealColumn get currentAmount => real().withDefault(const Constant(0))();
   IntColumn get targetDate => integer().nullable()();
-  IntColumn get accountId =>
-      integer().nullable().references(Accounts, #id)();
+  TextColumn get accountId =>
+      text().nullable().references(Accounts, #id)();
   IntColumn get color => integer().nullable()();
   TextColumn get icon => text().nullable()();
-  // 'active', 'completed', 'paused'
-  TextColumn get status =>
-      text().withDefault(const Constant('active'))();
+  TextColumn get status => text().withDefault(const Constant('active'))();
   IntColumn get createdAt => integer().withDefault(const Constant(0))();
+  IntColumn get updatedAt => integer().withDefault(const Constant(0))();
+  IntColumn get deletedAt => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }

@@ -3,15 +3,13 @@ import 'accounts_table.dart';
 import 'categories_table.dart';
 
 class Transactions extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get accountId =>
-      integer().references(Accounts, #id)();
-  IntColumn get categoryId =>
-      integer().nullable().references(Categories, #id)();
-  // 'income', 'expense', 'transfer'
+  TextColumn get id => text()();
+  TextColumn get accountId => text().references(Accounts, #id)();
+  TextColumn get categoryId =>
+      text().nullable().references(Categories, #id)();
   TextColumn get type => text().withDefault(const Constant('expense'))();
   RealColumn get amount => real()();
-  IntColumn get date => integer()(); // timestamp Unix
+  IntColumn get date => integer()();
   TextColumn get description => text().nullable()();
   TextColumn get notes => text().nullable()();
   TextColumn get paymentMethod => text().nullable()();
@@ -19,9 +17,8 @@ class Transactions extends Table {
   // Recorrência
   BoolColumn get isRecurring =>
       boolean().withDefault(const Constant(false))();
-  // 'monthly', 'weekly', 'yearly'
   TextColumn get recurrenceType => text().nullable()();
-  IntColumn get recurrenceParentId => integer().nullable()();
+  TextColumn get recurrenceParentId => text().nullable()();
 
   // Parcelamento
   IntColumn get installmentTotal => integer().nullable()();
@@ -29,8 +26,13 @@ class Transactions extends Table {
   TextColumn get installmentGroupId => text().nullable()();
 
   // Transferência
-  IntColumn get transferPairId => integer().nullable()();
+  TextColumn get transferPairId => text().nullable()();
+  BoolColumn get isTransferOut => boolean().nullable()();
 
   IntColumn get createdAt => integer().withDefault(const Constant(0))();
   IntColumn get updatedAt => integer().withDefault(const Constant(0))();
+  IntColumn get deletedAt => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
