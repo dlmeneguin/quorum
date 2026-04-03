@@ -112,7 +112,7 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now().millisecondsSinceEpoch;
     final defaults = [
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Alimentação',
           type: const Value('expense'),
           icon: const Value('utensils'),
@@ -121,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Transporte',
           type: const Value('expense'),
           icon: const Value('car'),
@@ -130,7 +130,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Moradia',
           type: const Value('expense'),
           icon: const Value('home'),
@@ -139,7 +139,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Saúde',
           type: const Value('expense'),
           icon: const Value('heart'),
@@ -148,7 +148,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Lazer',
           type: const Value('expense'),
           icon: const Value('gamepad2'),
@@ -157,7 +157,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Educação',
           type: const Value('expense'),
           icon: const Value('book'),
@@ -166,7 +166,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Vestuário',
           type: const Value('expense'),
           icon: const Value('shirt'),
@@ -175,7 +175,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Outros',
           type: const Value('expense'),
           icon: const Value('circle'),
@@ -184,7 +184,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Salário',
           type: const Value('income'),
           icon: const Value('briefcase'),
@@ -193,7 +193,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Freelance',
           type: const Value('income'),
           icon: const Value('laptop'),
@@ -202,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Investimentos',
           type: const Value('income'),
           icon: const Value('trendingUp'),
@@ -211,7 +211,7 @@ class AppDatabase extends _$AppDatabase {
           createdAt: Value(now),
           updatedAt: Value(now)),
       CategoriesCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           name: 'Outros',
           type: const Value('income'),
           icon: const Value('circle'),

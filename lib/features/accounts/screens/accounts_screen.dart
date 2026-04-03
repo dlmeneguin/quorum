@@ -193,7 +193,7 @@ class AccountsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, int id) async {
+      BuildContext context, WidgetRef ref, String id) async {
     final db = ref.read(databaseProvider);
   
     // Busca as dependências antes de exibir o diálogo

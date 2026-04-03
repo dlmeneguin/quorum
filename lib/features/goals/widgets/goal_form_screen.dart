@@ -26,7 +26,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
   int _amountCents = 0;
 
   DateTime? _targetDate;
-  int? _selectedAccountId;
+  String? _selectedAccountId;
   Color _selectedColor = AppColors.accent;
   bool _isSaving = false;
 
@@ -152,6 +152,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
       createdAt: widget.goal != null
           ? Value(widget.goal!.createdAt)
           : Value(now),
+      updatedAt: Value(now),
     );
 
     if (widget.goal == null) {
@@ -296,7 +297,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
+                  child: DropdownButton<String>(
                     value: _selectedAccountId,
                     hint: Text(
                       'Selecione uma conta',
@@ -309,7 +310,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                     onChanged: (v) =>
                         setState(() => _selectedAccountId = v),
                     items: accounts
-                        .map((a) => DropdownMenuItem<int>(
+                        .map((a) => DropdownMenuItem<String>(
                               value: a.id,
                               child: Text(a.name,
                                   style: AppTextStyles.body(textPrimary)),

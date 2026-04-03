@@ -147,13 +147,8 @@ class TransactionsScreen extends ConsumerWidget {
                         if (t.type == 'income') return sum + t.amount;
                         if (t.type == 'expense') return sum - t.amount;
                         if (t.type == 'transfer') {
-                          // Transferências se cancelam mutuamente no total do dia
-                          // Entrada soma, saída subtrai
-                          if (t.transferPairId != null && t.transferPairId! < t.id) {
-                            return sum + t.amount; // entrada
-                          } else {
-                            return sum - t.amount; // saída
-                          }
+                          final isIn = t.isTransferOut == false;
+                          return isIn ? sum + t.amount : sum - t.amount;
                         }
                         return sum;
                       });
@@ -289,7 +284,7 @@ class TransactionsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, int id) async {
+      BuildContext context, WidgetRef ref, String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -388,9 +383,7 @@ class _TransactionTile extends StatelessWidget {
     final isTransfer = transaction.type == 'transfer';
 
     // Para transferências: entrada se transferPairId < id, saída se > id
-    final isTransferIn = isTransfer &&
-        transaction.transferPairId != null &&
-        transaction.transferPairId! < transaction.id;
+    final isTransferIn = isTransfer && (transaction.isTransferOut == false);
 
     final color = isTransfer
         ? AppColors.accent

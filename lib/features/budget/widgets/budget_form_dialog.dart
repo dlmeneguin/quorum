@@ -36,7 +36,7 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   int _amountCents = 0;
-  int? _selectedCategoryId;
+  String? _selectedCategoryId;
   bool _isSaving = false;
 
   String _formatCents(int cents) {
@@ -180,7 +180,7 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
                       ),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
+                      child: DropdownButton<String>(
                         value: _selectedCategoryId,
                         hint: Text(
                           availableCategories.isEmpty && !isEditing

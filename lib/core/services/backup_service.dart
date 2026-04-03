@@ -113,7 +113,7 @@ class BackupService {
         for (final raw in (payload['accounts'] as List)) {
           await db.into(db.accounts).insert(
                 AccountsCompanion.insert(
-                  id: Value(raw['id'] as int),
+                  id: raw['id'].toString(),
                   name: raw['name'] as String,
                   type: Value(raw['type'] as String),
                   initialBalance: Value(
@@ -129,7 +129,7 @@ class BackupService {
         for (final raw in (payload['categories'] as List)) {
           await db.into(db.categories).insert(
                 CategoriesCompanion.insert(
-                  id: Value(raw['id'] as int),
+                  id: raw['id'].toString(),
                   name: raw['name'] as String,
                   type: Value(raw['type'] as String? ?? 'expense'),
                   color: Value(raw['color'] as int?),
@@ -143,9 +143,9 @@ class BackupService {
         for (final raw in (payload['transactions'] as List)) {
           await db.into(db.transactions).insert(
                 TransactionsCompanion.insert(
-                  id: Value(raw['id'] as int),
-                  accountId: raw['accountId'] as int,
-                  categoryId: Value(raw['categoryId'] as int?),
+                  id: raw['id'].toString(),
+                  accountId: raw['accountId'].toString(),
+                  categoryId: Value((raw['categoryId'] as int?)?.toString()),
                   type: Value(raw['type'] as String),
                   amount: (raw['amount'] as num).toDouble(),
                   date: raw['date'] as int,
@@ -158,7 +158,7 @@ class BackupService {
                   recurrenceType:
                       Value(raw['recurrenceType'] as String?),
                   recurrenceParentId:
-                      Value(raw['recurrenceParentId'] as int?),
+                      Value((raw['recurrenceParentId'] as int?)?.toString()),
                   installmentTotal:
                       Value(raw['installmentTotal'] as int?),
                   installmentCurrent:
@@ -166,7 +166,7 @@ class BackupService {
                   installmentGroupId:
                       Value(raw['installmentGroupId'] as String?),
                   transferPairId:
-                      Value(raw['transferPairId'] as int?),
+                      Value((raw['transferPairId'] as int?)?.toString()),
                   createdAt: Value(raw['createdAt'] as int? ?? 0),
                   updatedAt: Value(raw['updatedAt'] as int? ?? 0),
                 ),
@@ -176,8 +176,8 @@ class BackupService {
         for (final raw in (payload['budgets'] as List)) {
           await db.into(db.budgets).insert(
                 BudgetsCompanion.insert(
-                  id: Value(raw['id'] as int),
-                  categoryId: raw['categoryId'] as int,
+                  id: raw['id'].toString(),
+                  categoryId: raw['categoryId'].toString(),
                   year: raw['year'] as int,
                   month: raw['month'] as int,
                   limitAmount:
@@ -189,14 +189,14 @@ class BackupService {
         for (final raw in (payload['goals'] as List)) {
           await db.into(db.goals).insert(
                 GoalsCompanion.insert(
-                  id: Value(raw['id'] as int),
+                  id: raw['id'].toString(),
                   name: raw['name'] as String,
                   targetAmount:
                       (raw['targetAmount'] as num).toDouble(),
                   currentAmount: Value(
                       (raw['currentAmount'] as num? ?? 0).toDouble()),
                   targetDate: Value(raw['targetDate'] as int?),
-                  accountId: Value(raw['accountId'] as int?),
+                  accountId: Value((raw['accountId'] as int?)?.toString()),
                   color: Value(raw['color'] as int?),
                   icon: Value(raw['icon'] as String?),
                   status:
@@ -209,8 +209,8 @@ class BackupService {
         for (final raw in (payload['goalContributions'] as List)) {
           await db.into(db.goalContributions).insert(
                 GoalContributionsCompanion.insert(
-                  id: Value(raw['id'] as int),
-                  goalId: raw['goalId'] as int,
+                  id: raw['id'].toString(),
+                  goalId: raw['goalId'].toString(),
                   amount: (raw['amount'] as num).toDouble(),
                   date: raw['date'] as int,
                   note: Value(raw['note'] as String?),

@@ -70,7 +70,7 @@ Future<void> addContributionAndUpdate({
 
   await db.goalsDao.addContribution(
     GoalContributionsCompanion.insert(
-      id: Value(AppDatabase.newId()),
+      id: AppDatabase.newId(),
       goalId: goal.id,
       amount: amount, // positivo = saiu da conta, entrou na meta
       date: date.millisecondsSinceEpoch,
@@ -109,7 +109,7 @@ Future<void> withdrawFromGoal({
 
   await db.goalsDao.addContribution(
     GoalContributionsCompanion.insert(
-      id: Value(AppDatabase.newId()),
+      id: AppDatabase.newId(),
       goalId: goal.id,
       amount: -amount, // negativo = saiu da meta, voltou para a conta
       date: date.millisecondsSinceEpoch,

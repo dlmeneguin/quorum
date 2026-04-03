@@ -750,9 +750,7 @@ class _TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.type == 'income';
     final isTransfer = transaction.type == 'transfer';
-    final isTransferIn = isTransfer &&
-        transaction.transferPairId != null &&
-        transaction.transferPairId! < transaction.id;
+    final isTransferIn = isTransfer && (transaction.isTransferOut == false);
     final color = isTransfer
         ? AppColors.accent
         : isIncome

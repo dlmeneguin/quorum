@@ -30,9 +30,9 @@ class _TransactionFormScreenState
 
   String _selectedType = 'expense';
   DateTime _selectedDate = DateTime.now();
-  int? _selectedCategoryId;
-  int? _selectedAccountId;
-  int? _selectedToAccountId;
+  String? _selectedCategoryId;
+  String? _selectedAccountId;
+  String? _selectedToAccountId;
   String? _selectedPaymentMethod;
   bool _isRecurring = false;
   bool _isInstallment = false;
@@ -163,7 +163,7 @@ class _TransactionFormScreenState
     }
 
     final companion = TransactionsCompanion.insert(
-      id: Value(widget.transaction?.id ?? AppDatabase.newId()),
+      id: widget.transaction?.id ?? AppDatabase.newId(),
       accountId: _selectedAccountId!,
       categoryId: Value(_selectedCategoryId),
       type: Value(_selectedType),
@@ -212,7 +212,7 @@ class _TransactionFormScreenState
           DateTime(baseDate.year, baseDate.month + i, baseDate.day);
       await db.transactionsDao.createTransaction(
         TransactionsCompanion.insert(
-          id: Value(AppDatabase.newId()),
+          id: AppDatabase.newId(),
           accountId: _selectedAccountId!,
           categoryId: Value(_selectedCategoryId),
           type: Value(_selectedType),
@@ -237,7 +237,7 @@ class _TransactionFormScreenState
       AppDatabase db, double amount, int dateTs, int now) async {
     await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
-        id: Value(AppDatabase.newId()),
+        id: AppDatabase.newId(),
         accountId: _selectedAccountId!,
         categoryId: Value(_selectedCategoryId),
         type: Value(_selectedType),
@@ -278,7 +278,7 @@ class _TransactionFormScreenState
     final outId = AppDatabase.newId();
     await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
-        id: Value(outId),
+        id: outId,
         accountId: _selectedAccountId!,
         type: const Value('transfer'),
         amount: amount,
@@ -293,7 +293,7 @@ class _TransactionFormScreenState
     final inId = AppDatabase.newId();
     await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
-        id: Value(inId),
+        id: inId,
         accountId: _selectedToAccountId!,
         type: const Value('transfer'),
         amount: amount,
@@ -520,7 +520,7 @@ class _TransactionFormScreenState
             ),
             const SizedBox(height: 8),
             accountsAsync.when(
-              data: (accounts) => _DropdownField<int>(
+              data: (accounts) => _DropdownField<String>(
                 value: _selectedAccountId,
                 hint: 'Selecione a conta',
                 items: accounts
@@ -546,7 +546,7 @@ class _TransactionFormScreenState
               _SectionLabel('Conta de destino', textSecondary),
               const SizedBox(height: 8),
               accountsAsync.when(
-                data: (accounts) => _DropdownField<int>(
+                data: (accounts) => _DropdownField<String>(
                   value: _selectedToAccountId,
                   hint: 'Selecione a conta destino',
                   items: accounts
@@ -572,7 +572,7 @@ class _TransactionFormScreenState
               _SectionLabel('Categoria', textSecondary),
               const SizedBox(height: 8),
               categoriesAsync.when(
-                data: (categories) => _DropdownField<int>(
+                data: (categories) => _DropdownField<String>(
                   value: _selectedCategoryId,
                   hint: 'Selecione a categoria',
                   items: categories
