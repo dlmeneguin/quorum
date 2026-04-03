@@ -9,6 +9,7 @@ import '../../../core/services/google_auth_service.dart';
 import '../../../core/services/sync_service_provider.dart';
 import '../providers/theme_provider.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../pluggy/screens/pluggy_test_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -89,6 +90,27 @@ class SettingsScreen extends ConsumerWidget {
                     borderColor: borderColor,
                     textPrimary: textPrimary,
                     textSecondary: textSecondary,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Open Finance (Pluggy) ──
+                  Text('Open Finance',
+                      style: AppTextStyles.label(textSecondary)),
+                  const SizedBox(height: 8),
+                  _SettingsItem(
+                    icon: Icons.account_balance_rounded,
+                    label: 'Importar dados bancários',
+                    subtitle: 'Conecte via Pluggy / MeuPluggy (Open Finance)',
+                    color: const Color(0xFF6366F1),
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PluggyTestScreen(),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
 
