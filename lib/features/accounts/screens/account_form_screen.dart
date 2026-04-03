@@ -76,12 +76,13 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     final companion = AccountsCompanion(
       id: widget.account != null
           ? Value(widget.account!.id)
-          : const Value.absent(),
+          : Value(AppDatabase.newId()),
       name: Value(_nameController.text.trim()),
       type: Value(_selectedType),
       initialBalance: Value(amount),
       color: Value(_selectedColor.value),
       createdAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
     );
 
     if (widget.account == null) {

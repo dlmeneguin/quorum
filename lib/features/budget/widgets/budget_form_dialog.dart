@@ -99,11 +99,15 @@ class _BudgetFormDialogState extends ConsumerState<BudgetFormDialog> {
     final companion = BudgetsCompanion(
       id: widget.budget != null
           ? Value(widget.budget!.id)
-          : const Value.absent(),
+          : Value(AppDatabase.newId()),
       categoryId: Value(_selectedCategoryId!),
       year: Value(widget.year),
       month: Value(widget.month),
       limitAmount: Value(amount),
+      createdAt: widget.budget == null
+          ? Value(DateTime.now().millisecondsSinceEpoch)
+          : const Value.absent(),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
     );
 
     if (widget.budget == null) {

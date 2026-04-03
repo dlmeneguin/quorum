@@ -23,12 +23,11 @@ Future<double> computeAccountBalance(AppDatabase db, Account account) async {
     } else if (t.type == 'expense') {
       balance -= t.amount;
     } else if (t.type == 'transfer') {
-      if (t.transferPairId != null) {
-        if (t.transferPairId! > t.id) {
-          balance -= t.amount;
-        } else {
-          balance += t.amount;
-        }
+      final isOut = t.isTransferOut ?? true;
+      if (isOut) {
+        balance -= t.amount;
+      } else {
+        balance += t.amount;
       }
     }
   }

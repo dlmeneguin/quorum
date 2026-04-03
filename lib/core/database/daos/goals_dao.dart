@@ -12,40 +12,64 @@ class GoalsDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<Goal>> watchActiveGoals() =>
       (select(goals)
-            ..where((g) => g.status.equals('active'))
+            ..where((g) =>
+                g.status.equals('active') & g.deletedAt.isNull())
             ..orderBy([(g) => OrderingTerm.asc(g.name)]))
           .watch();
 
   Stream<List<Goal>> watchAllGoals() =>
       (select(goals)
+            ..where((g) => g.deletedAt.isNull())
             ..orderBy([(g) => OrderingTerm.asc(g.name)]))
           .watch();
 
-  Future<int> createGoal(GoalsCompanion entry) =>
+  Stream<List<Goal>> watchGoalsByAccount(String accountId) =>
+      (select(goals)
+            ..where((g) =>
+                g.accountId.equals(accountId) & g.deletedAt.isNull()))
+          .watch();
+
+  Future<void> createGoal(GoalsCompanion entry) =>
       into(goals).insert(entry);
 
   Future<bool> updateGoal(GoalsCompanion entry) =>
       update(goals).replace(entry);
 
-  Future<int> deleteGoal(int id) =>
-      (delete(goals)..where((g) => g.id.equals(id))).go();
+  Future<void> deleteGoal(String id) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction(() async {
+      // Soft delete nas contribuições
+      await (update(goalContributions)
+            ..where((c) =>
+                c.goalId.equals(id) & c.deletedAt.isNull()))
+          .write(GoalContributionsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+      // Soft delete na meta
+      await (update(goals)..where((g) => g.id.equals(id)))
+          .write(GoalsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+    });
+  }
 
-  Future<int> addContribution(GoalContributionsCompanion entry) =>
+  Future<void> addContribution(GoalContributionsCompanion entry) =>
       into(goalContributions).insert(entry);
 
-  Stream<List<GoalContribution>> watchContributionsByGoal(int goalId) =>
+  Stream<List<GoalContribution>> watchContributionsByGoal(
+          String goalId) =>
       (select(goalContributions)
-            ..where((c) => c.goalId.equals(goalId))
+            ..where((c) =>
+                c.goalId.equals(goalId) & c.deletedAt.isNull())
             ..orderBy([(c) => OrderingTerm.desc(c.date)]))
           .watch();
 
-  // Retorna o total líquido de contribuições para metas vinculadas
-  // a uma conta específica. Positivo = saiu da conta, negativo = voltou.
-  // Usado para calcular o saldo real da conta.
-  Future<double> getNetContributionsByAccount(int accountId) async {
-    // Busca todas as metas vinculadas à conta
+  Future<double> getNetContributionsByAccount(String accountId) async {
     final linkedGoals = await (select(goals)
-          ..where((g) => g.accountId.equals(accountId)))
+          ..where((g) =>
+              g.accountId.equals(accountId) & g.deletedAt.isNull()))
         .get();
 
     if (linkedGoals.isEmpty) return 0.0;
@@ -53,24 +77,18 @@ class GoalsDao extends DatabaseAccessor<AppDatabase>
     double total = 0.0;
     for (final goal in linkedGoals) {
       final contributions = await (select(goalContributions)
-            ..where((c) => c.goalId.equals(goal.id)))
+            ..where((c) =>
+                c.goalId.equals(goal.id) & c.deletedAt.isNull()))
           .get();
       for (final c in contributions) {
-        total += c.amount; // positivo = contribuição, negativo = retirada
+        total += c.amount;
       }
     }
     return total;
   }
 
-  // Stream da versão acima para reatividade
-  Stream<double> watchNetContributionsByAccount(int accountId) {
-    return watchAllGoals().asyncMap((_) =>
-        getNetContributionsByAccount(accountId));
+  Stream<double> watchNetContributionsByAccount(String accountId) {
+    return watchAllGoals().asyncMap(
+        (_) => getNetContributionsByAccount(accountId));
   }
-
-  // Stream filtrado por conta — para reatividade granular no accountBalanceProvider
-  Stream<List<Goal>> watchGoalsByAccount(int accountId) =>
-      (select(goals)
-            ..where((g) => g.accountId.equals(accountId)))
-          .watch();
 }

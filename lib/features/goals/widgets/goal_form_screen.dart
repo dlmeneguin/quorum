@@ -136,7 +136,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
     final companion = GoalsCompanion(
       id: widget.goal != null
           ? Value(widget.goal!.id)
-          : const Value.absent(),
+          : Value(AppDatabase.newId()),
       name: Value(_nameController.text.trim()),
       targetAmount: Value(amount),
       currentAmount: widget.goal != null

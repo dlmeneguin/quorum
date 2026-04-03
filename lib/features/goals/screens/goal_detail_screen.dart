@@ -13,7 +13,7 @@ import '../widgets/goal_form_screen.dart';
 import '../../../core/utils/balance_validator.dart';
 
 class GoalDetailScreen extends ConsumerWidget {
-  final int goalId;
+  final String goalId;
   final String goalName;
 
   const GoalDetailScreen({

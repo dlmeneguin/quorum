@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
-import '../tables/budgets_table.dart'; // <- adicionar
+import '../tables/budgets_table.dart';
 
 part 'budgets_dao.g.dart';
 
@@ -12,15 +12,23 @@ class BudgetsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Budget>> watchBudgetsByMonth(int year, int month) =>
       (select(budgets)
             ..where((b) =>
-                b.year.equals(year) & b.month.equals(month)))
+                b.year.equals(year) &
+                b.month.equals(month) &
+                b.deletedAt.isNull()))
           .watch();
 
-  Future<int> createBudget(BudgetsCompanion entry) =>
+  Future<void> createBudget(BudgetsCompanion entry) =>
       into(budgets).insert(entry);
 
   Future<bool> updateBudget(BudgetsCompanion entry) =>
       update(budgets).replace(entry);
 
-  Future<int> deleteBudget(int id) =>
-      (delete(budgets)..where((b) => b.id.equals(id))).go();
+  Future<void> deleteBudget(String id) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(budgets)..where((b) => b.id.equals(id)))
+        .write(BudgetsCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
 }

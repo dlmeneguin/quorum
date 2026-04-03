@@ -65,11 +65,15 @@ class _CategoryFormScreenState
     final companion = CategoriesCompanion(
       id: widget.category != null
           ? Value(widget.category!.id)
-          : const Value.absent(),
+          : Value(AppDatabase.newId()),
       name: Value(_nameController.text.trim()),
       type: Value(_selectedType),
       color: Value(_selectedColor.value),
       isDefault: const Value(false),
+      createdAt: widget.category == null
+          ? Value(DateTime.now().millisecondsSinceEpoch)
+          : const Value.absent(),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
     );
 
     if (widget.category == null) {

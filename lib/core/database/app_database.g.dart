@@ -10,16 +10,12 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
   $AccountsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -101,6 +97,29 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -111,6 +130,8 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     icon,
     isActive,
     createdAt,
+    updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -126,6 +147,8 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -174,6 +197,18 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -184,7 +219,7 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Account(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
@@ -215,6 +250,14 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -225,7 +268,7 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
 }
 
 class Account extends DataClass implements Insertable<Account> {
-  final int id;
+  final String id;
   final String name;
   final String type;
   final double initialBalance;
@@ -233,6 +276,8 @@ class Account extends DataClass implements Insertable<Account> {
   final String? icon;
   final bool isActive;
   final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
   const Account({
     required this.id,
     required this.name,
@@ -242,11 +287,13 @@ class Account extends DataClass implements Insertable<Account> {
     this.icon,
     required this.isActive,
     required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
     map['initial_balance'] = Variable<double>(initialBalance);
@@ -258,6 +305,10 @@ class Account extends DataClass implements Insertable<Account> {
     }
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
     return map;
   }
 
@@ -273,6 +324,10 @@ class Account extends DataClass implements Insertable<Account> {
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       isActive: Value(isActive),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -282,7 +337,7 @@ class Account extends DataClass implements Insertable<Account> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Account(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
       initialBalance: serializer.fromJson<double>(json['initialBalance']),
@@ -290,13 +345,15 @@ class Account extends DataClass implements Insertable<Account> {
       icon: serializer.fromJson<String?>(json['icon']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
       'initialBalance': serializer.toJson<double>(initialBalance),
@@ -304,11 +361,13 @@ class Account extends DataClass implements Insertable<Account> {
       'icon': serializer.toJson<String?>(icon),
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   Account copyWith({
-    int? id,
+    String? id,
     String? name,
     String? type,
     double? initialBalance,
@@ -316,6 +375,8 @@ class Account extends DataClass implements Insertable<Account> {
     Value<String?> icon = const Value.absent(),
     bool? isActive,
     int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => Account(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -325,6 +386,8 @@ class Account extends DataClass implements Insertable<Account> {
     icon: icon.present ? icon.value : this.icon,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
@@ -338,6 +401,8 @@ class Account extends DataClass implements Insertable<Account> {
       icon: data.icon.present ? data.icon.value : this.icon,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -351,7 +416,9 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('isActive: $isActive, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -366,6 +433,8 @@ class Account extends DataClass implements Insertable<Account> {
     icon,
     isActive,
     createdAt,
+    updatedAt,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -378,11 +447,13 @@ class Account extends DataClass implements Insertable<Account> {
           other.color == this.color &&
           other.icon == this.icon &&
           other.isActive == this.isActive &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> name;
   final Value<String> type;
   final Value<double> initialBalance;
@@ -390,6 +461,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<String?> icon;
   final Value<bool> isActive;
   final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -399,9 +473,12 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.icon = const Value.absent(),
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   AccountsCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     required String name,
     this.type = const Value.absent(),
     this.initialBalance = const Value.absent(),
@@ -409,9 +486,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.icon = const Value.absent(),
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
-  }) : name = Value(name);
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
   static Insertable<Account> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
     Expression<double>? initialBalance,
@@ -419,6 +500,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<String>? icon,
     Expression<bool>? isActive,
     Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -429,11 +513,14 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       if (icon != null) 'icon': icon,
       if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   AccountsCompanion copyWith({
-    Value<int>? id,
+    Value<String>? id,
     Value<String>? name,
     Value<String>? type,
     Value<double>? initialBalance,
@@ -441,6 +528,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<String?>? icon,
     Value<bool>? isActive,
     Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -451,6 +541,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       icon: icon ?? this.icon,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -458,7 +551,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -481,6 +574,15 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -494,7 +596,10 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('isActive: $isActive, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -508,16 +613,12 @@ class $CategoriesTable extends Categories
   $CategoriesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -575,6 +676,41 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -583,6 +719,9 @@ class $CategoriesTable extends Categories
     color,
     icon,
     isDefault,
+    createdAt,
+    updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -598,6 +737,8 @@ class $CategoriesTable extends Categories
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -631,6 +772,24 @@ class $CategoriesTable extends Categories
         isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta),
       );
     }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -641,7 +800,7 @@ class $CategoriesTable extends Categories
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Category(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
@@ -664,6 +823,18 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_default'],
       )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -674,12 +845,15 @@ class $CategoriesTable extends Categories
 }
 
 class Category extends DataClass implements Insertable<Category> {
-  final int id;
+  final String id;
   final String name;
   final String type;
   final int? color;
   final String? icon;
   final bool isDefault;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
   const Category({
     required this.id,
     required this.name,
@@ -687,11 +861,14 @@ class Category extends DataClass implements Insertable<Category> {
     this.color,
     this.icon,
     required this.isDefault,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
     if (!nullToAbsent || color != null) {
@@ -701,6 +878,11 @@ class Category extends DataClass implements Insertable<Category> {
       map['icon'] = Variable<String>(icon);
     }
     map['is_default'] = Variable<bool>(isDefault);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
     return map;
   }
 
@@ -714,6 +896,11 @@ class Category extends DataClass implements Insertable<Category> {
           : Value(color),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       isDefault: Value(isDefault),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -723,34 +910,43 @@ class Category extends DataClass implements Insertable<Category> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Category(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
       color: serializer.fromJson<int?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
       'color': serializer.toJson<int?>(color),
       'icon': serializer.toJson<String?>(icon),
       'isDefault': serializer.toJson<bool>(isDefault),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   Category copyWith({
-    int? id,
+    String? id,
     String? name,
     String? type,
     Value<int?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
     bool? isDefault,
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -758,6 +954,9 @@ class Category extends DataClass implements Insertable<Category> {
     color: color.present ? color.value : this.color,
     icon: icon.present ? icon.value : this.icon,
     isDefault: isDefault ?? this.isDefault,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -767,6 +966,9 @@ class Category extends DataClass implements Insertable<Category> {
       color: data.color.present ? data.color.value : this.color,
       icon: data.icon.present ? data.icon.value : this.icon,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -778,13 +980,26 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('type: $type, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
-          ..write('isDefault: $isDefault')
+          ..write('isDefault: $isDefault, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, color, icon, isDefault);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    color,
+    icon,
+    isDefault,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -794,16 +1009,23 @@ class Category extends DataClass implements Insertable<Category> {
           other.type == this.type &&
           other.color == this.color &&
           other.icon == this.icon &&
-          other.isDefault == this.isDefault);
+          other.isDefault == this.isDefault &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> name;
   final Value<String> type;
   final Value<int?> color;
   final Value<String?> icon;
   final Value<bool> isDefault;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -811,22 +1033,35 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
     this.isDefault = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     required String name,
     this.type = const Value.absent(),
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
     this.isDefault = const Value.absent(),
-  }) : name = Value(name);
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
   static Insertable<Category> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
     Expression<int>? color,
     Expression<String>? icon,
     Expression<bool>? isDefault,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -835,16 +1070,24 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (color != null) 'color': color,
       if (icon != null) 'icon': icon,
       if (isDefault != null) 'is_default': isDefault,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   CategoriesCompanion copyWith({
-    Value<int>? id,
+    Value<String>? id,
     Value<String>? name,
     Value<String>? type,
     Value<int?>? color,
     Value<String?>? icon,
     Value<bool>? isDefault,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -853,6 +1096,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       color: color ?? this.color,
       icon: icon ?? this.icon,
       isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -860,7 +1107,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -877,6 +1124,18 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isDefault.present) {
       map['is_default'] = Variable<bool>(isDefault.value);
     }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -888,7 +1147,11 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('type: $type, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
-          ..write('isDefault: $isDefault')
+          ..write('isDefault: $isDefault, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -902,26 +1165,22 @@ class $TransactionsTable extends Transactions
   $TransactionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _accountIdMeta = const VerificationMeta(
     'accountId',
   );
   @override
-  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
     'account_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES accounts (id)',
@@ -931,11 +1190,11 @@ class $TransactionsTable extends Transactions
     'categoryId',
   );
   @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
     'category_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES categories (id)',
@@ -1029,13 +1288,14 @@ class $TransactionsTable extends Transactions
   static const VerificationMeta _recurrenceParentIdMeta =
       const VerificationMeta('recurrenceParentId');
   @override
-  late final GeneratedColumn<int> recurrenceParentId = GeneratedColumn<int>(
-    'recurrence_parent_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumn<String> recurrenceParentId =
+      GeneratedColumn<String>(
+        'recurrence_parent_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _installmentTotalMeta = const VerificationMeta(
     'installmentTotal',
   );
@@ -1072,12 +1332,26 @@ class $TransactionsTable extends Transactions
     'transferPairId',
   );
   @override
-  late final GeneratedColumn<int> transferPairId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> transferPairId = GeneratedColumn<String>(
     'transfer_pair_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isTransferOutMeta = const VerificationMeta(
+    'isTransferOut',
+  );
+  @override
+  late final GeneratedColumn<bool> isTransferOut = GeneratedColumn<bool>(
+    'is_transfer_out',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_transfer_out" IN (0, 1))',
+    ),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -1103,6 +1377,17 @@ class $TransactionsTable extends Transactions
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1121,8 +1406,10 @@ class $TransactionsTable extends Transactions
     installmentCurrent,
     installmentGroupId,
     transferPairId,
+    isTransferOut,
     createdAt,
     updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1138,6 +1425,8 @@ class $TransactionsTable extends Transactions
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('account_id')) {
       context.handle(
@@ -1262,6 +1551,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('is_transfer_out')) {
+      context.handle(
+        _isTransferOutMeta,
+        isTransferOut.isAcceptableOrUnknown(
+          data['is_transfer_out']!,
+          _isTransferOutMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1274,6 +1572,12 @@ class $TransactionsTable extends Transactions
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -1284,15 +1588,15 @@ class $TransactionsTable extends Transactions
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Transaction(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       accountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}account_id'],
       )!,
       categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}category_id'],
       ),
       type: attachedDatabase.typeMapping.read(
@@ -1328,7 +1632,7 @@ class $TransactionsTable extends Transactions
         data['${effectivePrefix}recurrence_type'],
       ),
       recurrenceParentId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}recurrence_parent_id'],
       ),
       installmentTotal: attachedDatabase.typeMapping.read(
@@ -1344,8 +1648,12 @@ class $TransactionsTable extends Transactions
         data['${effectivePrefix}installment_group_id'],
       ),
       transferPairId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}transfer_pair_id'],
+      ),
+      isTransferOut: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_transfer_out'],
       ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1355,6 +1663,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}updated_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -1365,9 +1677,9 @@ class $TransactionsTable extends Transactions
 }
 
 class Transaction extends DataClass implements Insertable<Transaction> {
-  final int id;
-  final int accountId;
-  final int? categoryId;
+  final String id;
+  final String accountId;
+  final String? categoryId;
   final String type;
   final double amount;
   final int date;
@@ -1376,13 +1688,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String? paymentMethod;
   final bool isRecurring;
   final String? recurrenceType;
-  final int? recurrenceParentId;
+  final String? recurrenceParentId;
   final int? installmentTotal;
   final int? installmentCurrent;
   final String? installmentGroupId;
-  final int? transferPairId;
+  final String? transferPairId;
+  final bool? isTransferOut;
   final int createdAt;
   final int updatedAt;
+  final int? deletedAt;
   const Transaction({
     required this.id,
     required this.accountId,
@@ -1400,16 +1714,18 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.installmentCurrent,
     this.installmentGroupId,
     this.transferPairId,
+    this.isTransferOut,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['account_id'] = Variable<int>(accountId);
+    map['id'] = Variable<String>(id);
+    map['account_id'] = Variable<String>(accountId);
     if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<int>(categoryId);
+      map['category_id'] = Variable<String>(categoryId);
     }
     map['type'] = Variable<String>(type);
     map['amount'] = Variable<double>(amount);
@@ -1428,7 +1744,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['recurrence_type'] = Variable<String>(recurrenceType);
     }
     if (!nullToAbsent || recurrenceParentId != null) {
-      map['recurrence_parent_id'] = Variable<int>(recurrenceParentId);
+      map['recurrence_parent_id'] = Variable<String>(recurrenceParentId);
     }
     if (!nullToAbsent || installmentTotal != null) {
       map['installment_total'] = Variable<int>(installmentTotal);
@@ -1440,10 +1756,16 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['installment_group_id'] = Variable<String>(installmentGroupId);
     }
     if (!nullToAbsent || transferPairId != null) {
-      map['transfer_pair_id'] = Variable<int>(transferPairId);
+      map['transfer_pair_id'] = Variable<String>(transferPairId);
+    }
+    if (!nullToAbsent || isTransferOut != null) {
+      map['is_transfer_out'] = Variable<bool>(isTransferOut);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
     return map;
   }
 
@@ -1485,8 +1807,14 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       transferPairId: transferPairId == null && nullToAbsent
           ? const Value.absent()
           : Value(transferPairId),
+      isTransferOut: isTransferOut == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isTransferOut),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -1496,9 +1824,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Transaction(
-      id: serializer.fromJson<int>(json['id']),
-      accountId: serializer.fromJson<int>(json['accountId']),
-      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      id: serializer.fromJson<String>(json['id']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
       type: serializer.fromJson<String>(json['type']),
       amount: serializer.fromJson<double>(json['amount']),
       date: serializer.fromJson<int>(json['date']),
@@ -1507,24 +1835,28 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       paymentMethod: serializer.fromJson<String?>(json['paymentMethod']),
       isRecurring: serializer.fromJson<bool>(json['isRecurring']),
       recurrenceType: serializer.fromJson<String?>(json['recurrenceType']),
-      recurrenceParentId: serializer.fromJson<int?>(json['recurrenceParentId']),
+      recurrenceParentId: serializer.fromJson<String?>(
+        json['recurrenceParentId'],
+      ),
       installmentTotal: serializer.fromJson<int?>(json['installmentTotal']),
       installmentCurrent: serializer.fromJson<int?>(json['installmentCurrent']),
       installmentGroupId: serializer.fromJson<String?>(
         json['installmentGroupId'],
       ),
-      transferPairId: serializer.fromJson<int?>(json['transferPairId']),
+      transferPairId: serializer.fromJson<String?>(json['transferPairId']),
+      isTransferOut: serializer.fromJson<bool?>(json['isTransferOut']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'accountId': serializer.toJson<int>(accountId),
-      'categoryId': serializer.toJson<int?>(categoryId),
+      'id': serializer.toJson<String>(id),
+      'accountId': serializer.toJson<String>(accountId),
+      'categoryId': serializer.toJson<String?>(categoryId),
       'type': serializer.toJson<String>(type),
       'amount': serializer.toJson<double>(amount),
       'date': serializer.toJson<int>(date),
@@ -1533,20 +1865,22 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'paymentMethod': serializer.toJson<String?>(paymentMethod),
       'isRecurring': serializer.toJson<bool>(isRecurring),
       'recurrenceType': serializer.toJson<String?>(recurrenceType),
-      'recurrenceParentId': serializer.toJson<int?>(recurrenceParentId),
+      'recurrenceParentId': serializer.toJson<String?>(recurrenceParentId),
       'installmentTotal': serializer.toJson<int?>(installmentTotal),
       'installmentCurrent': serializer.toJson<int?>(installmentCurrent),
       'installmentGroupId': serializer.toJson<String?>(installmentGroupId),
-      'transferPairId': serializer.toJson<int?>(transferPairId),
+      'transferPairId': serializer.toJson<String?>(transferPairId),
+      'isTransferOut': serializer.toJson<bool?>(isTransferOut),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   Transaction copyWith({
-    int? id,
-    int? accountId,
-    Value<int?> categoryId = const Value.absent(),
+    String? id,
+    String? accountId,
+    Value<String?> categoryId = const Value.absent(),
     String? type,
     double? amount,
     int? date,
@@ -1555,13 +1889,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<String?> paymentMethod = const Value.absent(),
     bool? isRecurring,
     Value<String?> recurrenceType = const Value.absent(),
-    Value<int?> recurrenceParentId = const Value.absent(),
+    Value<String?> recurrenceParentId = const Value.absent(),
     Value<int?> installmentTotal = const Value.absent(),
     Value<int?> installmentCurrent = const Value.absent(),
     Value<String?> installmentGroupId = const Value.absent(),
-    Value<int?> transferPairId = const Value.absent(),
+    Value<String?> transferPairId = const Value.absent(),
+    Value<bool?> isTransferOut = const Value.absent(),
     int? createdAt,
     int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     accountId: accountId ?? this.accountId,
@@ -1593,8 +1929,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     transferPairId: transferPairId.present
         ? transferPairId.value
         : this.transferPairId,
+    isTransferOut: isTransferOut.present
+        ? isTransferOut.value
+        : this.isTransferOut,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -1634,8 +1974,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       transferPairId: data.transferPairId.present
           ? data.transferPairId.value
           : this.transferPairId,
+      isTransferOut: data.isTransferOut.present
+          ? data.isTransferOut.value
+          : this.isTransferOut,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -1658,8 +2002,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('installmentCurrent: $installmentCurrent, ')
           ..write('installmentGroupId: $installmentGroupId, ')
           ..write('transferPairId: $transferPairId, ')
+          ..write('isTransferOut: $isTransferOut, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -1682,8 +2028,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     installmentCurrent,
     installmentGroupId,
     transferPairId,
+    isTransferOut,
     createdAt,
     updatedAt,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1705,14 +2053,16 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.installmentCurrent == this.installmentCurrent &&
           other.installmentGroupId == this.installmentGroupId &&
           other.transferPairId == this.transferPairId &&
+          other.isTransferOut == this.isTransferOut &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
-  final Value<int> id;
-  final Value<int> accountId;
-  final Value<int?> categoryId;
+  final Value<String> id;
+  final Value<String> accountId;
+  final Value<String?> categoryId;
   final Value<String> type;
   final Value<double> amount;
   final Value<int> date;
@@ -1721,13 +2071,16 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> paymentMethod;
   final Value<bool> isRecurring;
   final Value<String?> recurrenceType;
-  final Value<int?> recurrenceParentId;
+  final Value<String?> recurrenceParentId;
   final Value<int?> installmentTotal;
   final Value<int?> installmentCurrent;
   final Value<String?> installmentGroupId;
-  final Value<int?> transferPairId;
+  final Value<String?> transferPairId;
+  final Value<bool?> isTransferOut;
   final Value<int> createdAt;
   final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.accountId = const Value.absent(),
@@ -1745,12 +2098,15 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.installmentCurrent = const Value.absent(),
     this.installmentGroupId = const Value.absent(),
     this.transferPairId = const Value.absent(),
+    this.isTransferOut = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
-    this.id = const Value.absent(),
-    required int accountId,
+    required String id,
+    required String accountId,
     this.categoryId = const Value.absent(),
     this.type = const Value.absent(),
     required double amount,
@@ -1765,15 +2121,19 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.installmentCurrent = const Value.absent(),
     this.installmentGroupId = const Value.absent(),
     this.transferPairId = const Value.absent(),
+    this.isTransferOut = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : accountId = Value(accountId),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       accountId = Value(accountId),
        amount = Value(amount),
        date = Value(date);
   static Insertable<Transaction> custom({
-    Expression<int>? id,
-    Expression<int>? accountId,
-    Expression<int>? categoryId,
+    Expression<String>? id,
+    Expression<String>? accountId,
+    Expression<String>? categoryId,
     Expression<String>? type,
     Expression<double>? amount,
     Expression<int>? date,
@@ -1782,13 +2142,16 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? paymentMethod,
     Expression<bool>? isRecurring,
     Expression<String>? recurrenceType,
-    Expression<int>? recurrenceParentId,
+    Expression<String>? recurrenceParentId,
     Expression<int>? installmentTotal,
     Expression<int>? installmentCurrent,
     Expression<String>? installmentGroupId,
-    Expression<int>? transferPairId,
+    Expression<String>? transferPairId,
+    Expression<bool>? isTransferOut,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1809,15 +2172,18 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (installmentGroupId != null)
         'installment_group_id': installmentGroupId,
       if (transferPairId != null) 'transfer_pair_id': transferPairId,
+      if (isTransferOut != null) 'is_transfer_out': isTransferOut,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   TransactionsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? accountId,
-    Value<int?>? categoryId,
+    Value<String>? id,
+    Value<String>? accountId,
+    Value<String?>? categoryId,
     Value<String>? type,
     Value<double>? amount,
     Value<int>? date,
@@ -1826,13 +2192,16 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String?>? paymentMethod,
     Value<bool>? isRecurring,
     Value<String?>? recurrenceType,
-    Value<int?>? recurrenceParentId,
+    Value<String?>? recurrenceParentId,
     Value<int?>? installmentTotal,
     Value<int?>? installmentCurrent,
     Value<String?>? installmentGroupId,
-    Value<int?>? transferPairId,
+    Value<String?>? transferPairId,
+    Value<bool?>? isTransferOut,
     Value<int>? createdAt,
     Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -1851,8 +2220,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       installmentCurrent: installmentCurrent ?? this.installmentCurrent,
       installmentGroupId: installmentGroupId ?? this.installmentGroupId,
       transferPairId: transferPairId ?? this.transferPairId,
+      isTransferOut: isTransferOut ?? this.isTransferOut,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -1860,13 +2232,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (accountId.present) {
-      map['account_id'] = Variable<int>(accountId.value);
+      map['account_id'] = Variable<String>(accountId.value);
     }
     if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (type.present) {
       map['type'] = Variable<String>(type.value);
@@ -1893,7 +2265,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       map['recurrence_type'] = Variable<String>(recurrenceType.value);
     }
     if (recurrenceParentId.present) {
-      map['recurrence_parent_id'] = Variable<int>(recurrenceParentId.value);
+      map['recurrence_parent_id'] = Variable<String>(recurrenceParentId.value);
     }
     if (installmentTotal.present) {
       map['installment_total'] = Variable<int>(installmentTotal.value);
@@ -1905,13 +2277,22 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       map['installment_group_id'] = Variable<String>(installmentGroupId.value);
     }
     if (transferPairId.present) {
-      map['transfer_pair_id'] = Variable<int>(transferPairId.value);
+      map['transfer_pair_id'] = Variable<String>(transferPairId.value);
+    }
+    if (isTransferOut.present) {
+      map['is_transfer_out'] = Variable<bool>(isTransferOut.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -1935,8 +2316,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('installmentCurrent: $installmentCurrent, ')
           ..write('installmentGroupId: $installmentGroupId, ')
           ..write('transferPairId: $transferPairId, ')
+          ..write('isTransferOut: $isTransferOut, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1949,26 +2333,22 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
   $BudgetsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
   @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
     'category_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES categories (id)',
@@ -2003,6 +2383,41 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2010,6 +2425,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     year,
     month,
     limitAmount,
+    createdAt,
+    updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2025,6 +2443,8 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -2061,6 +2481,24 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     } else if (isInserting) {
       context.missing(_limitAmountMeta);
     }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -2071,11 +2509,11 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Budget(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}category_id'],
       )!,
       year: attachedDatabase.typeMapping.read(
@@ -2090,6 +2528,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.double,
         data['${effectivePrefix}limit_amount'],
       )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -2100,26 +2550,37 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
 }
 
 class Budget extends DataClass implements Insertable<Budget> {
-  final int id;
-  final int categoryId;
+  final String id;
+  final String categoryId;
   final int year;
   final int month;
   final double limitAmount;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
   const Budget({
     required this.id,
     required this.categoryId,
     required this.year,
     required this.month,
     required this.limitAmount,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['category_id'] = Variable<int>(categoryId);
+    map['id'] = Variable<String>(id);
+    map['category_id'] = Variable<String>(categoryId);
     map['year'] = Variable<int>(year);
     map['month'] = Variable<int>(month);
     map['limit_amount'] = Variable<double>(limitAmount);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
     return map;
   }
 
@@ -2130,6 +2591,11 @@ class Budget extends DataClass implements Insertable<Budget> {
       year: Value(year),
       month: Value(month),
       limitAmount: Value(limitAmount),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -2139,37 +2605,49 @@ class Budget extends DataClass implements Insertable<Budget> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Budget(
-      id: serializer.fromJson<int>(json['id']),
-      categoryId: serializer.fromJson<int>(json['categoryId']),
+      id: serializer.fromJson<String>(json['id']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
       year: serializer.fromJson<int>(json['year']),
       month: serializer.fromJson<int>(json['month']),
       limitAmount: serializer.fromJson<double>(json['limitAmount']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'categoryId': serializer.toJson<int>(categoryId),
+      'id': serializer.toJson<String>(id),
+      'categoryId': serializer.toJson<String>(categoryId),
       'year': serializer.toJson<int>(year),
       'month': serializer.toJson<int>(month),
       'limitAmount': serializer.toJson<double>(limitAmount),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   Budget copyWith({
-    int? id,
-    int? categoryId,
+    String? id,
+    String? categoryId,
     int? year,
     int? month,
     double? limitAmount,
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => Budget(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
     year: year ?? this.year,
     month: month ?? this.month,
     limitAmount: limitAmount ?? this.limitAmount,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Budget copyWithCompanion(BudgetsCompanion data) {
     return Budget(
@@ -2182,6 +2660,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       limitAmount: data.limitAmount.present
           ? data.limitAmount.value
           : this.limitAmount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -2192,13 +2673,25 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('year: $year, ')
           ..write('month: $month, ')
-          ..write('limitAmount: $limitAmount')
+          ..write('limitAmount: $limitAmount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, categoryId, year, month, limitAmount);
+  int get hashCode => Object.hash(
+    id,
+    categoryId,
+    year,
+    month,
+    limitAmount,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2207,38 +2700,58 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.categoryId == this.categoryId &&
           other.year == this.year &&
           other.month == this.month &&
-          other.limitAmount == this.limitAmount);
+          other.limitAmount == this.limitAmount &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class BudgetsCompanion extends UpdateCompanion<Budget> {
-  final Value<int> id;
-  final Value<int> categoryId;
+  final Value<String> id;
+  final Value<String> categoryId;
   final Value<int> year;
   final Value<int> month;
   final Value<double> limitAmount;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.year = const Value.absent(),
     this.month = const Value.absent(),
     this.limitAmount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   BudgetsCompanion.insert({
-    this.id = const Value.absent(),
-    required int categoryId,
+    required String id,
+    required String categoryId,
     required int year,
     required int month,
     required double limitAmount,
-  }) : categoryId = Value(categoryId),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       categoryId = Value(categoryId),
        year = Value(year),
        month = Value(month),
        limitAmount = Value(limitAmount);
   static Insertable<Budget> custom({
-    Expression<int>? id,
-    Expression<int>? categoryId,
+    Expression<String>? id,
+    Expression<String>? categoryId,
     Expression<int>? year,
     Expression<int>? month,
     Expression<double>? limitAmount,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2246,15 +2759,23 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (year != null) 'year': year,
       if (month != null) 'month': month,
       if (limitAmount != null) 'limit_amount': limitAmount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   BudgetsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? categoryId,
+    Value<String>? id,
+    Value<String>? categoryId,
     Value<int>? year,
     Value<int>? month,
     Value<double>? limitAmount,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -2262,6 +2783,10 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       year: year ?? this.year,
       month: month ?? this.month,
       limitAmount: limitAmount ?? this.limitAmount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2269,10 +2794,10 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (year.present) {
       map['year'] = Variable<int>(year.value);
@@ -2282,6 +2807,18 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     }
     if (limitAmount.present) {
       map['limit_amount'] = Variable<double>(limitAmount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -2293,7 +2830,11 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('year: $year, ')
           ..write('month: $month, ')
-          ..write('limitAmount: $limitAmount')
+          ..write('limitAmount: $limitAmount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2306,16 +2847,12 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   $GoalsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -2368,11 +2905,11 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     'accountId',
   );
   @override
-  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
     'account_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES accounts (id)',
@@ -2418,6 +2955,29 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2430,6 +2990,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     icon,
     status,
     createdAt,
+    updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2445,6 +3007,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -2510,6 +3074,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -2520,7 +3096,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Goal(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
@@ -2540,7 +3116,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         data['${effectivePrefix}target_date'],
       ),
       accountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}account_id'],
       ),
       color: attachedDatabase.typeMapping.read(
@@ -2559,6 +3135,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -2569,16 +3153,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
 }
 
 class Goal extends DataClass implements Insertable<Goal> {
-  final int id;
+  final String id;
   final String name;
   final double targetAmount;
   final double currentAmount;
   final int? targetDate;
-  final int? accountId;
+  final String? accountId;
   final int? color;
   final String? icon;
   final String status;
   final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
   const Goal({
     required this.id,
     required this.name,
@@ -2590,11 +3176,13 @@ class Goal extends DataClass implements Insertable<Goal> {
     this.icon,
     required this.status,
     required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['target_amount'] = Variable<double>(targetAmount);
     map['current_amount'] = Variable<double>(currentAmount);
@@ -2602,7 +3190,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       map['target_date'] = Variable<int>(targetDate);
     }
     if (!nullToAbsent || accountId != null) {
-      map['account_id'] = Variable<int>(accountId);
+      map['account_id'] = Variable<String>(accountId);
     }
     if (!nullToAbsent || color != null) {
       map['color'] = Variable<int>(color);
@@ -2612,6 +3200,10 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
     return map;
   }
 
@@ -2633,6 +3225,10 @@ class Goal extends DataClass implements Insertable<Goal> {
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       status: Value(status),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -2642,46 +3238,52 @@ class Goal extends DataClass implements Insertable<Goal> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Goal(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       targetAmount: serializer.fromJson<double>(json['targetAmount']),
       currentAmount: serializer.fromJson<double>(json['currentAmount']),
       targetDate: serializer.fromJson<int?>(json['targetDate']),
-      accountId: serializer.fromJson<int?>(json['accountId']),
+      accountId: serializer.fromJson<String?>(json['accountId']),
       color: serializer.fromJson<int?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'targetAmount': serializer.toJson<double>(targetAmount),
       'currentAmount': serializer.toJson<double>(currentAmount),
       'targetDate': serializer.toJson<int?>(targetDate),
-      'accountId': serializer.toJson<int?>(accountId),
+      'accountId': serializer.toJson<String?>(accountId),
       'color': serializer.toJson<int?>(color),
       'icon': serializer.toJson<String?>(icon),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   Goal copyWith({
-    int? id,
+    String? id,
     String? name,
     double? targetAmount,
     double? currentAmount,
     Value<int?> targetDate = const Value.absent(),
-    Value<int?> accountId = const Value.absent(),
+    Value<String?> accountId = const Value.absent(),
     Value<int?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
     String? status,
     int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => Goal(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -2693,6 +3295,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     icon: icon.present ? icon.value : this.icon,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Goal copyWithCompanion(GoalsCompanion data) {
     return Goal(
@@ -2712,6 +3316,8 @@ class Goal extends DataClass implements Insertable<Goal> {
       icon: data.icon.present ? data.icon.value : this.icon,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -2727,7 +3333,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('status: $status, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -2744,6 +3352,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     icon,
     status,
     createdAt,
+    updatedAt,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -2758,20 +3368,25 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.color == this.color &&
           other.icon == this.icon &&
           other.status == this.status &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class GoalsCompanion extends UpdateCompanion<Goal> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> name;
   final Value<double> targetAmount;
   final Value<double> currentAmount;
   final Value<int?> targetDate;
-  final Value<int?> accountId;
+  final Value<String?> accountId;
   final Value<int?> color;
   final Value<String?> icon;
   final Value<String> status;
   final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const GoalsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -2783,9 +3398,12 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.icon = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   GoalsCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     required String name,
     required double targetAmount,
     this.currentAmount = const Value.absent(),
@@ -2795,19 +3413,26 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.icon = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
-  }) : name = Value(name),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
        targetAmount = Value(targetAmount);
   static Insertable<Goal> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<double>? targetAmount,
     Expression<double>? currentAmount,
     Expression<int>? targetDate,
-    Expression<int>? accountId,
+    Expression<String>? accountId,
     Expression<int>? color,
     Expression<String>? icon,
     Expression<String>? status,
     Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2820,20 +3445,26 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (icon != null) 'icon': icon,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   GoalsCompanion copyWith({
-    Value<int>? id,
+    Value<String>? id,
     Value<String>? name,
     Value<double>? targetAmount,
     Value<double>? currentAmount,
     Value<int?>? targetDate,
-    Value<int?>? accountId,
+    Value<String?>? accountId,
     Value<int?>? color,
     Value<String?>? icon,
     Value<String>? status,
     Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return GoalsCompanion(
       id: id ?? this.id,
@@ -2846,6 +3477,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       icon: icon ?? this.icon,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2853,7 +3487,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -2868,7 +3502,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       map['target_date'] = Variable<int>(targetDate.value);
     }
     if (accountId.present) {
-      map['account_id'] = Variable<int>(accountId.value);
+      map['account_id'] = Variable<String>(accountId.value);
     }
     if (color.present) {
       map['color'] = Variable<int>(color.value);
@@ -2881,6 +3515,15 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -2897,7 +3540,10 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('status: $status, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2911,24 +3557,20 @@ class $GoalContributionsTable extends GoalContributions
   $GoalContributionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _goalIdMeta = const VerificationMeta('goalId');
   @override
-  late final GeneratedColumn<int> goalId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
     'goal_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES goals (id)',
@@ -2961,8 +3603,52 @@ class $GoalContributionsTable extends GoalContributions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, goalId, amount, date, note];
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    goalId,
+    amount,
+    date,
+    note,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2977,6 +3663,8 @@ class $GoalContributionsTable extends GoalContributions
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('goal_id')) {
       context.handle(
@@ -3008,6 +3696,24 @@ class $GoalContributionsTable extends GoalContributions
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -3018,11 +3724,11 @@ class $GoalContributionsTable extends GoalContributions
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return GoalContribution(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
       goalId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}goal_id'],
       )!,
       amount: attachedDatabase.typeMapping.read(
@@ -3037,6 +3743,18 @@ class $GoalContributionsTable extends GoalContributions
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -3048,27 +3766,38 @@ class $GoalContributionsTable extends GoalContributions
 
 class GoalContribution extends DataClass
     implements Insertable<GoalContribution> {
-  final int id;
-  final int goalId;
+  final String id;
+  final String goalId;
   final double amount;
   final int date;
   final String? note;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
   const GoalContribution({
     required this.id,
     required this.goalId,
     required this.amount,
     required this.date,
     this.note,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['goal_id'] = Variable<int>(goalId);
+    map['id'] = Variable<String>(id);
+    map['goal_id'] = Variable<String>(goalId);
     map['amount'] = Variable<double>(amount);
     map['date'] = Variable<int>(date);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
     }
     return map;
   }
@@ -3080,6 +3809,11 @@ class GoalContribution extends DataClass
       amount: Value(amount),
       date: Value(date),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -3089,37 +3823,49 @@ class GoalContribution extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return GoalContribution(
-      id: serializer.fromJson<int>(json['id']),
-      goalId: serializer.fromJson<int>(json['goalId']),
+      id: serializer.fromJson<String>(json['id']),
+      goalId: serializer.fromJson<String>(json['goalId']),
       amount: serializer.fromJson<double>(json['amount']),
       date: serializer.fromJson<int>(json['date']),
       note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'goalId': serializer.toJson<int>(goalId),
+      'id': serializer.toJson<String>(id),
+      'goalId': serializer.toJson<String>(goalId),
       'amount': serializer.toJson<double>(amount),
       'date': serializer.toJson<int>(date),
       'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
     };
   }
 
   GoalContribution copyWith({
-    int? id,
-    int? goalId,
+    String? id,
+    String? goalId,
     double? amount,
     int? date,
     Value<String?> note = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
   }) => GoalContribution(
     id: id ?? this.id,
     goalId: goalId ?? this.goalId,
     amount: amount ?? this.amount,
     date: date ?? this.date,
     note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   GoalContribution copyWithCompanion(GoalContributionsCompanion data) {
     return GoalContribution(
@@ -3128,6 +3874,9 @@ class GoalContribution extends DataClass
       amount: data.amount.present ? data.amount.value : this.amount,
       date: data.date.present ? data.date.value : this.date,
       note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -3138,13 +3887,25 @@ class GoalContribution extends DataClass
           ..write('goalId: $goalId, ')
           ..write('amount: $amount, ')
           ..write('date: $date, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, goalId, amount, date, note);
+  int get hashCode => Object.hash(
+    id,
+    goalId,
+    amount,
+    date,
+    note,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3153,37 +3914,57 @@ class GoalContribution extends DataClass
           other.goalId == this.goalId &&
           other.amount == this.amount &&
           other.date == this.date &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
-  final Value<int> id;
-  final Value<int> goalId;
+  final Value<String> id;
+  final Value<String> goalId;
   final Value<double> amount;
   final Value<int> date;
   final Value<String?> note;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<int> rowid;
   const GoalContributionsCompanion({
     this.id = const Value.absent(),
     this.goalId = const Value.absent(),
     this.amount = const Value.absent(),
     this.date = const Value.absent(),
     this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   GoalContributionsCompanion.insert({
-    this.id = const Value.absent(),
-    required int goalId,
+    required String id,
+    required String goalId,
     required double amount,
     required int date,
     this.note = const Value.absent(),
-  }) : goalId = Value(goalId),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       goalId = Value(goalId),
        amount = Value(amount),
        date = Value(date);
   static Insertable<GoalContribution> custom({
-    Expression<int>? id,
-    Expression<int>? goalId,
+    Expression<String>? id,
+    Expression<String>? goalId,
     Expression<double>? amount,
     Expression<int>? date,
     Expression<String>? note,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3191,15 +3972,23 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
       if (amount != null) 'amount': amount,
       if (date != null) 'date': date,
       if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   GoalContributionsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? goalId,
+    Value<String>? id,
+    Value<String>? goalId,
     Value<double>? amount,
     Value<int>? date,
     Value<String?>? note,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<int>? rowid,
   }) {
     return GoalContributionsCompanion(
       id: id ?? this.id,
@@ -3207,6 +3996,10 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
       amount: amount ?? this.amount,
       date: date ?? this.date,
       note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -3214,10 +4007,10 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (goalId.present) {
-      map['goal_id'] = Variable<int>(goalId.value);
+      map['goal_id'] = Variable<String>(goalId.value);
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
@@ -3227,6 +4020,18 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -3238,7 +4043,11 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContribution> {
           ..write('goalId: $goalId, ')
           ..write('amount: $amount, ')
           ..write('date: $date, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3277,7 +4086,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$AccountsTableCreateCompanionBuilder =
     AccountsCompanion Function({
-      Value<int> id,
+      required String id,
       required String name,
       Value<String> type,
       Value<double> initialBalance,
@@ -3285,10 +4094,13 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<String?> icon,
       Value<bool> isActive,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
-      Value<int> id,
+      Value<String> id,
       Value<String> name,
       Value<String> type,
       Value<double> initialBalance,
@@ -3296,6 +4108,9 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<String?> icon,
       Value<bool> isActive,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$AccountsTableReferences
@@ -3312,7 +4127,7 @@ final class $$AccountsTableReferences
     final manager = $$TransactionsTableTableManager(
       $_db,
       $_db.transactions,
-    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
@@ -3331,7 +4146,7 @@ final class $$AccountsTableReferences
     final manager = $$GoalsTableTableManager(
       $_db,
       $_db.goals,
-    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_goalsRefsTable($_db));
     return ProcessedTableManager(
@@ -3349,7 +4164,7 @@ class $$AccountsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -3386,6 +4201,16 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3449,7 +4274,7 @@ class $$AccountsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -3488,6 +4313,16 @@ class $$AccountsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -3499,7 +4334,7 @@ class $$AccountsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -3524,6 +4359,12 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -3604,7 +4445,7 @@ class $$AccountsTableTableManager
               $$AccountsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<double> initialBalance = const Value.absent(),
@@ -3612,6 +4453,9 @@ class $$AccountsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -3621,10 +4465,13 @@ class $$AccountsTableTableManager
                 icon: icon,
                 isActive: isActive,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String id,
                 required String name,
                 Value<String> type = const Value.absent(),
                 Value<double> initialBalance = const Value.absent(),
@@ -3632,6 +4479,9 @@ class $$AccountsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -3641,6 +4491,9 @@ class $$AccountsTableTableManager
                 icon: icon,
                 isActive: isActive,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3727,21 +4580,29 @@ typedef $$AccountsTableProcessedTableManager =
     >;
 typedef $$CategoriesTableCreateCompanionBuilder =
     CategoriesCompanion Function({
-      Value<int> id,
+      required String id,
       required String name,
       Value<String> type,
       Value<int?> color,
       Value<String?> icon,
       Value<bool> isDefault,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
     CategoriesCompanion Function({
-      Value<int> id,
+      Value<String> id,
       Value<String> name,
       Value<String> type,
       Value<int?> color,
       Value<String?> icon,
       Value<bool> isDefault,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$CategoriesTableReferences
@@ -3761,7 +4622,7 @@ final class $$CategoriesTableReferences
     final manager = $$TransactionsTableTableManager(
       $_db,
       $_db.transactions,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
@@ -3780,7 +4641,7 @@ final class $$CategoriesTableReferences
     final manager = $$BudgetsTableTableManager(
       $_db,
       $_db.budgets,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_budgetsRefsTable($_db));
     return ProcessedTableManager(
@@ -3798,7 +4659,7 @@ class $$CategoriesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -3825,6 +4686,21 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isDefault => $composableBuilder(
     column: $table.isDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3888,7 +4764,7 @@ class $$CategoriesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -3917,6 +4793,21 @@ class $$CategoriesTableOrderingComposer
     column: $table.isDefault,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -3928,7 +4819,7 @@ class $$CategoriesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -3945,6 +4836,15 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isDefault =>
       $composableBuilder(column: $table.isDefault, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -4025,12 +4925,16 @@ class $$CategoriesTableTableManager
               $$CategoriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<int?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
@@ -4038,15 +4942,23 @@ class $$CategoriesTableTableManager
                 color: color,
                 icon: icon,
                 isDefault: isDefault,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String id,
                 required String name,
                 Value<String> type = const Value.absent(),
                 Value<int?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
@@ -4054,6 +4966,10 @@ class $$CategoriesTableTableManager
                 color: color,
                 icon: icon,
                 isDefault: isDefault,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4140,9 +5056,9 @@ typedef $$CategoriesTableProcessedTableManager =
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
-      Value<int> id,
-      required int accountId,
-      Value<int?> categoryId,
+      required String id,
+      required String accountId,
+      Value<String?> categoryId,
       Value<String> type,
       required double amount,
       required int date,
@@ -4151,19 +5067,22 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> paymentMethod,
       Value<bool> isRecurring,
       Value<String?> recurrenceType,
-      Value<int?> recurrenceParentId,
+      Value<String?> recurrenceParentId,
       Value<int?> installmentTotal,
       Value<int?> installmentCurrent,
       Value<String?> installmentGroupId,
-      Value<int?> transferPairId,
+      Value<String?> transferPairId,
+      Value<bool?> isTransferOut,
       Value<int> createdAt,
       Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
-      Value<int> id,
-      Value<int> accountId,
-      Value<int?> categoryId,
+      Value<String> id,
+      Value<String> accountId,
+      Value<String?> categoryId,
       Value<String> type,
       Value<double> amount,
       Value<int> date,
@@ -4172,13 +5091,16 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> paymentMethod,
       Value<bool> isRecurring,
       Value<String?> recurrenceType,
-      Value<int?> recurrenceParentId,
+      Value<String?> recurrenceParentId,
       Value<int?> installmentTotal,
       Value<int?> installmentCurrent,
       Value<String?> installmentGroupId,
-      Value<int?> transferPairId,
+      Value<String?> transferPairId,
+      Value<bool?> isTransferOut,
       Value<int> createdAt,
       Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$TransactionsTableReferences
@@ -4191,7 +5113,7 @@ final class $$TransactionsTableReferences
       );
 
   $$AccountsTableProcessedTableManager get accountId {
-    final $_column = $_itemColumn<int>('account_id')!;
+    final $_column = $_itemColumn<String>('account_id')!;
 
     final manager = $$AccountsTableTableManager(
       $_db,
@@ -4210,7 +5132,7 @@ final class $$TransactionsTableReferences
       );
 
   $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<int>('category_id');
+    final $_column = $_itemColumn<String>('category_id');
     if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager(
       $_db,
@@ -4233,7 +5155,7 @@ class $$TransactionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -4278,7 +5200,7 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get recurrenceParentId => $composableBuilder(
+  ColumnFilters<String> get recurrenceParentId => $composableBuilder(
     column: $table.recurrenceParentId,
     builder: (column) => ColumnFilters(column),
   );
@@ -4298,8 +5220,13 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get transferPairId => $composableBuilder(
+  ColumnFilters<String> get transferPairId => $composableBuilder(
     column: $table.transferPairId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTransferOut => $composableBuilder(
+    column: $table.isTransferOut,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4310,6 +5237,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4369,7 +5301,7 @@ class $$TransactionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -4414,7 +5346,7 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get recurrenceParentId => $composableBuilder(
+  ColumnOrderings<String> get recurrenceParentId => $composableBuilder(
     column: $table.recurrenceParentId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -4434,8 +5366,13 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get transferPairId => $composableBuilder(
+  ColumnOrderings<String> get transferPairId => $composableBuilder(
     column: $table.transferPairId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isTransferOut => $composableBuilder(
+    column: $table.isTransferOut,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4446,6 +5383,11 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<int> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4505,7 +5447,7 @@ class $$TransactionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get type =>
@@ -4540,7 +5482,7 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get recurrenceParentId => $composableBuilder(
+  GeneratedColumn<String> get recurrenceParentId => $composableBuilder(
     column: $table.recurrenceParentId,
     builder: (column) => column,
   );
@@ -4560,8 +5502,13 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get transferPairId => $composableBuilder(
+  GeneratedColumn<String> get transferPairId => $composableBuilder(
     column: $table.transferPairId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isTransferOut => $composableBuilder(
+    column: $table.isTransferOut,
     builder: (column) => column,
   );
 
@@ -4570,6 +5517,9 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -4646,9 +5596,9 @@ class $$TransactionsTableTableManager
               $$TransactionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> accountId = const Value.absent(),
-                Value<int?> categoryId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<int> date = const Value.absent(),
@@ -4657,13 +5607,16 @@ class $$TransactionsTableTableManager
                 Value<String?> paymentMethod = const Value.absent(),
                 Value<bool> isRecurring = const Value.absent(),
                 Value<String?> recurrenceType = const Value.absent(),
-                Value<int?> recurrenceParentId = const Value.absent(),
+                Value<String?> recurrenceParentId = const Value.absent(),
                 Value<int?> installmentTotal = const Value.absent(),
                 Value<int?> installmentCurrent = const Value.absent(),
                 Value<String?> installmentGroupId = const Value.absent(),
-                Value<int?> transferPairId = const Value.absent(),
+                Value<String?> transferPairId = const Value.absent(),
+                Value<bool?> isTransferOut = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 accountId: accountId,
@@ -4681,14 +5634,17 @@ class $$TransactionsTableTableManager
                 installmentCurrent: installmentCurrent,
                 installmentGroupId: installmentGroupId,
                 transferPairId: transferPairId,
+                isTransferOut: isTransferOut,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int accountId,
-                Value<int?> categoryId = const Value.absent(),
+                required String id,
+                required String accountId,
+                Value<String?> categoryId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 required double amount,
                 required int date,
@@ -4697,13 +5653,16 @@ class $$TransactionsTableTableManager
                 Value<String?> paymentMethod = const Value.absent(),
                 Value<bool> isRecurring = const Value.absent(),
                 Value<String?> recurrenceType = const Value.absent(),
-                Value<int?> recurrenceParentId = const Value.absent(),
+                Value<String?> recurrenceParentId = const Value.absent(),
                 Value<int?> installmentTotal = const Value.absent(),
                 Value<int?> installmentCurrent = const Value.absent(),
                 Value<String?> installmentGroupId = const Value.absent(),
-                Value<int?> transferPairId = const Value.absent(),
+                Value<String?> transferPairId = const Value.absent(),
+                Value<bool?> isTransferOut = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 accountId: accountId,
@@ -4721,8 +5680,11 @@ class $$TransactionsTableTableManager
                 installmentCurrent: installmentCurrent,
                 installmentGroupId: installmentGroupId,
                 transferPairId: transferPairId,
+                isTransferOut: isTransferOut,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4806,19 +5768,27 @@ typedef $$TransactionsTableProcessedTableManager =
     >;
 typedef $$BudgetsTableCreateCompanionBuilder =
     BudgetsCompanion Function({
-      Value<int> id,
-      required int categoryId,
+      required String id,
+      required String categoryId,
       required int year,
       required int month,
       required double limitAmount,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$BudgetsTableUpdateCompanionBuilder =
     BudgetsCompanion Function({
-      Value<int> id,
-      Value<int> categoryId,
+      Value<String> id,
+      Value<String> categoryId,
       Value<int> year,
       Value<int> month,
       Value<double> limitAmount,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$BudgetsTableReferences
@@ -4831,7 +5801,7 @@ final class $$BudgetsTableReferences
       );
 
   $$CategoriesTableProcessedTableManager get categoryId {
-    final $_column = $_itemColumn<int>('category_id')!;
+    final $_column = $_itemColumn<String>('category_id')!;
 
     final manager = $$CategoriesTableTableManager(
       $_db,
@@ -4854,7 +5824,7 @@ class $$BudgetsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -4871,6 +5841,21 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<double> get limitAmount => $composableBuilder(
     column: $table.limitAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4907,7 +5892,7 @@ class $$BudgetsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -4924,6 +5909,21 @@ class $$BudgetsTableOrderingComposer
 
   ColumnOrderings<double> get limitAmount => $composableBuilder(
     column: $table.limitAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4960,7 +5960,7 @@ class $$BudgetsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get year =>
@@ -4973,6 +5973,15 @@ class $$BudgetsTableAnnotationComposer
     column: $table.limitAmount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -5026,31 +6035,47 @@ class $$BudgetsTableTableManager
               $$BudgetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> categoryId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
                 Value<int> year = const Value.absent(),
                 Value<int> month = const Value.absent(),
                 Value<double> limitAmount = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 categoryId: categoryId,
                 year: year,
                 month: month,
                 limitAmount: limitAmount,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int categoryId,
+                required String id,
+                required String categoryId,
                 required int year,
                 required int month,
                 required double limitAmount,
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
                 year: year,
                 month: month,
                 limitAmount: limitAmount,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5121,29 +6146,35 @@ typedef $$BudgetsTableProcessedTableManager =
     >;
 typedef $$GoalsTableCreateCompanionBuilder =
     GoalsCompanion Function({
-      Value<int> id,
+      required String id,
       required String name,
       required double targetAmount,
       Value<double> currentAmount,
       Value<int?> targetDate,
-      Value<int?> accountId,
+      Value<String?> accountId,
       Value<int?> color,
       Value<String?> icon,
       Value<String> status,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$GoalsTableUpdateCompanionBuilder =
     GoalsCompanion Function({
-      Value<int> id,
+      Value<String> id,
       Value<String> name,
       Value<double> targetAmount,
       Value<double> currentAmount,
       Value<int?> targetDate,
-      Value<int?> accountId,
+      Value<String?> accountId,
       Value<int?> color,
       Value<String?> icon,
       Value<String> status,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$GoalsTableReferences
@@ -5154,7 +6185,7 @@ final class $$GoalsTableReferences
       .createAlias($_aliasNameGenerator(db.goals.accountId, db.accounts.id));
 
   $$AccountsTableProcessedTableManager? get accountId {
-    final $_column = $_itemColumn<int>('account_id');
+    final $_column = $_itemColumn<String>('account_id');
     if ($_column == null) return null;
     final manager = $$AccountsTableTableManager(
       $_db,
@@ -5181,7 +6212,7 @@ final class $$GoalsTableReferences
     final manager = $$GoalContributionsTableTableManager(
       $_db,
       $_db.goalContributions,
-    ).filter((f) => f.goalId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.goalId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _goalContributionsRefsTable($_db),
@@ -5200,7 +6231,7 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -5242,6 +6273,16 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5303,7 +6344,7 @@ class $$GoalsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -5348,6 +6389,16 @@ class $$GoalsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5381,7 +6432,7 @@ class $$GoalsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -5413,6 +6464,12 @@ class $$GoalsTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -5492,16 +6549,19 @@ class $$GoalsTableTableManager
               $$GoalsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> targetAmount = const Value.absent(),
                 Value<double> currentAmount = const Value.absent(),
                 Value<int?> targetDate = const Value.absent(),
-                Value<int?> accountId = const Value.absent(),
+                Value<String?> accountId = const Value.absent(),
                 Value<int?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => GoalsCompanion(
                 id: id,
                 name: name,
@@ -5513,19 +6573,25 @@ class $$GoalsTableTableManager
                 icon: icon,
                 status: status,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String id,
                 required String name,
                 required double targetAmount,
                 Value<double> currentAmount = const Value.absent(),
                 Value<int?> targetDate = const Value.absent(),
-                Value<int?> accountId = const Value.absent(),
+                Value<String?> accountId = const Value.absent(),
                 Value<int?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => GoalsCompanion.insert(
                 id: id,
                 name: name,
@@ -5537,6 +6603,9 @@ class $$GoalsTableTableManager
                 icon: icon,
                 status: status,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5630,19 +6699,27 @@ typedef $$GoalsTableProcessedTableManager =
     >;
 typedef $$GoalContributionsTableCreateCompanionBuilder =
     GoalContributionsCompanion Function({
-      Value<int> id,
-      required int goalId,
+      required String id,
+      required String goalId,
       required double amount,
       required int date,
       Value<String?> note,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 typedef $$GoalContributionsTableUpdateCompanionBuilder =
     GoalContributionsCompanion Function({
-      Value<int> id,
-      Value<int> goalId,
+      Value<String> id,
+      Value<String> goalId,
       Value<double> amount,
       Value<int> date,
       Value<String?> note,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
     });
 
 final class $$GoalContributionsTableReferences
@@ -5663,7 +6740,7 @@ final class $$GoalContributionsTableReferences
   );
 
   $$GoalsTableProcessedTableManager get goalId {
-    final $_column = $_itemColumn<int>('goal_id')!;
+    final $_column = $_itemColumn<String>('goal_id')!;
 
     final manager = $$GoalsTableTableManager(
       $_db,
@@ -5686,7 +6763,7 @@ class $$GoalContributionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -5703,6 +6780,21 @@ class $$GoalContributionsTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5739,7 +6831,7 @@ class $$GoalContributionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -5756,6 +6848,21 @@ class $$GoalContributionsTableOrderingComposer
 
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5792,7 +6899,7 @@ class $$GoalContributionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<double> get amount =>
@@ -5803,6 +6910,15 @@ class $$GoalContributionsTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$GoalsTableAnnotationComposer get goalId {
     final $$GoalsTableAnnotationComposer composer = $composerBuilder(
@@ -5861,31 +6977,47 @@ class $$GoalContributionsTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> goalId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> goalId = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<int> date = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => GoalContributionsCompanion(
                 id: id,
                 goalId: goalId,
                 amount: amount,
                 date: date,
                 note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int goalId,
+                required String id,
+                required String goalId,
                 required double amount,
                 required int date,
                 Value<String?> note = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => GoalContributionsCompanion.insert(
                 id: id,
                 goalId: goalId,
                 amount: amount,
                 date: date,
                 note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(

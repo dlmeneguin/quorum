@@ -163,6 +163,7 @@ class _TransactionFormScreenState
     }
 
     final companion = TransactionsCompanion.insert(
+      id: Value(widget.transaction?.id ?? AppDatabase.newId()),
       accountId: _selectedAccountId!,
       categoryId: Value(_selectedCategoryId),
       type: Value(_selectedType),
@@ -211,6 +212,7 @@ class _TransactionFormScreenState
           DateTime(baseDate.year, baseDate.month + i, baseDate.day);
       await db.transactionsDao.createTransaction(
         TransactionsCompanion.insert(
+          id: Value(AppDatabase.newId()),
           accountId: _selectedAccountId!,
           categoryId: Value(_selectedCategoryId),
           type: Value(_selectedType),
@@ -235,6 +237,7 @@ class _TransactionFormScreenState
       AppDatabase db, double amount, int dateTs, int now) async {
     await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
+        id: Value(AppDatabase.newId()),
         accountId: _selectedAccountId!,
         categoryId: Value(_selectedCategoryId),
         type: Value(_selectedType),
@@ -272,8 +275,10 @@ class _TransactionFormScreenState
         ? 'Transferência'
         : _descriptionController.text.trim();
 
-    final outId = await db.transactionsDao.createTransaction(
+    final outId = AppDatabase.newId();
+    await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
+        id: Value(outId),
         accountId: _selectedAccountId!,
         type: const Value('transfer'),
         amount: amount,
@@ -281,11 +286,14 @@ class _TransactionFormScreenState
         description: Value(desc),
         createdAt: Value(now),
         updatedAt: Value(now),
+        isTransferOut: const Value(true),
       ),
     );
 
-    final inId = await db.transactionsDao.createTransaction(
+    final inId = AppDatabase.newId();
+    await db.transactionsDao.createTransaction(
       TransactionsCompanion.insert(
+        id: Value(inId),
         accountId: _selectedToAccountId!,
         type: const Value('transfer'),
         amount: amount,
@@ -294,6 +302,7 @@ class _TransactionFormScreenState
         transferPairId: Value(outId),
         createdAt: Value(now),
         updatedAt: Value(now),
+        isTransferOut: const Value(false),
       ),
     );
 
@@ -305,6 +314,7 @@ class _TransactionFormScreenState
         date: Value(dateTs),
         type: const Value('transfer'),
         transferPairId: Value(inId),
+        isTransferOut: const Value(true),
         updatedAt: Value(now),
       ),
     );

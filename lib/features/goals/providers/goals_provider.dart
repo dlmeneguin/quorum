@@ -9,7 +9,7 @@ final goalsProvider = StreamProvider<List<Goal>>((ref) {
 });
 
 final goalByIdProvider =
-    StreamProvider.family<Goal?, int>((ref, goalId) {
+    StreamProvider.family<Goal?, String>((ref, goalId) {
   final db = ref.watch(databaseProvider);
   return db.goalsDao
       .watchAllGoals()
@@ -17,7 +17,7 @@ final goalByIdProvider =
 });
 
 final contributionsProvider =
-    StreamProvider.family<List<GoalContribution>, int>((ref, goalId) {
+    StreamProvider.family<List<GoalContribution>, String>((ref, goalId) {
   final db = ref.watch(databaseProvider);
   return db.goalsDao.watchContributionsByGoal(goalId);
 });
@@ -70,6 +70,7 @@ Future<void> addContributionAndUpdate({
 
   await db.goalsDao.addContribution(
     GoalContributionsCompanion.insert(
+      id: Value(AppDatabase.newId()),
       goalId: goal.id,
       amount: amount, // positivo = saiu da conta, entrou na meta
       date: date.millisecondsSinceEpoch,
@@ -108,6 +109,7 @@ Future<void> withdrawFromGoal({
 
   await db.goalsDao.addContribution(
     GoalContributionsCompanion.insert(
+      id: Value(AppDatabase.newId()),
       goalId: goal.id,
       amount: -amount, // negativo = saiu da meta, voltou para a conta
       date: date.millisecondsSinceEpoch,

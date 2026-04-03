@@ -5,7 +5,7 @@ class BalanceValidator {
   /// Retorna null se OK, ou uma mensagem de erro se saldo insuficiente.
   static Future<String?> checkSufficientBalance({
     required AppDatabase db,
-    required int accountId,
+    required String accountId, 
     required double amount,
   }) async {
     final accounts = await db.accountsDao.watchAllAccounts().first;
