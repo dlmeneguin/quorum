@@ -5,7 +5,10 @@ import 'categories_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/services/backup_service.dart';
+import '../../../core/services/google_auth_service.dart';
+import '../../../core/services/sync_service_provider.dart';
 import '../providers/theme_provider.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -55,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
                     textSecondary: textSecondary,
                   ),
                   const SizedBox(height: 24),
-          
+
                   // ── Personalização ──
                   Text('Personalização',
                       style: AppTextStyles.label(textSecondary)),
@@ -76,7 +79,19 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-          
+
+                  // ── Sincronização ──
+                  Text('Sincronização',
+                      style: AppTextStyles.label(textSecondary)),
+                  const SizedBox(height: 8),
+                  _SyncSection(
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
+                  const SizedBox(height: 24),
+
                   // ── Dados ──
                   Text('Dados', style: AppTextStyles.label(textSecondary)),
                   const SizedBox(height: 8),
@@ -94,16 +109,6 @@ class SettingsScreen extends ConsumerWidget {
                           BackupService(ref.read(databaseProvider));
                       await service.exportBackup(context);
                     },
-                  ),
-                  //sincronização
-                  const SizedBox(height: 24),
-                  Text('Sincronização', style: AppTextStyles.label(textSecondary)),
-                  const SizedBox(height: 8),
-                  _SyncSection(
-                    surfaceColor: surfaceColor,
-                    borderColor: borderColor,
-                    textPrimary: textPrimary,
-                    textSecondary: textSecondary,
                   ),
                   const SizedBox(height: 8),
                   _SettingsItem(
@@ -141,6 +146,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+// ── Seletor de tema ──
+
 class _ThemeSelector extends ConsumerWidget {
   final Color surfaceColor;
   final Color borderColor;
@@ -177,9 +184,6 @@ class _ThemeSelector extends ConsumerWidget {
           final (mode, icon, label) = option;
           final isSelected = currentMode == mode;
           final isSnoopy = mode == AppThemeMode.snoopy;
-          final activeColor = isSnoopy
-              ? AppColors.snoopyPrimary
-              : AppColors.primary;
           return Expanded(
             child: GestureDetector(
               onTap: () =>
@@ -224,6 +228,8 @@ class _ThemeSelector extends ConsumerWidget {
     );
   }
 }
+
+// ── Item de configuração ──
 
 class _SettingsItem extends StatelessWidget {
   final IconData icon;
@@ -292,6 +298,8 @@ class _SettingsItem extends StatelessWidget {
   }
 }
 
+// ── Seção de sincronização ──
+
 class _SyncSection extends ConsumerStatefulWidget {
   final Color surfaceColor;
   final Color borderColor;
@@ -306,137 +314,167 @@ class _SyncSection extends ConsumerStatefulWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<GoogleSignInAccount?>(
-      future: GoogleAuthService.currentUser(),
-      builder: (context, snapshot) {
-        final user = snapshot.data;
-        final isConnected = user != null;
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.sync,
-                      color: isConnected
-                          ? AppColors.primary
-                          : AppColors.textSecondaryLight,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isConnected
-                              ? 'Sincronização ativa'
-                              : 'Sincronização desativada',
-                          style: AppTextStyles.bodyBold(textPrimary),
-                        ),
-                        Text(
-                          isConnected
-                              ? user.email
-                              : 'Conecte sua conta Google',
-                          style: AppTextStyles.label(textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  if (isConnected) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          await ref
-                              .read(syncServiceProvider)
-                              .forceUpload();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Backup enviado ao Google Drive'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text('Sincronizar agora'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: () async {
-                        await GoogleAuthService.signOut();
-                        if (context.mounted) {
-                          setState(() {}); // força rebuild
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.danger),
-                      ),
-                      child: Text(
-                        'Desconectar',
-                        style: AppTextStyles.bodyBold(AppColors.danger),
-                      ),
-                    ),
-                  ] else
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          final user = await GoogleAuthService.signIn();
-                          if (user != null) {
-                            // Primeiro sync após conectar
-                            await ref
-                                .read(syncServiceProvider)
-                                .checkAndPullOnStartup();
-                          }
-                        },
-                        icon: const Icon(Icons.login, size: 18),
-                        label: const Text('Conectar com Google'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-  @override
   ConsumerState<_SyncSection> createState() => _SyncSectionState();
 }
 
 class _SyncSectionState extends ConsumerState<_SyncSection> {
-  // No botão de logout:
-  onPressed: () async {
-    await GoogleAuthService.signOut();
-    setState(() {}); // agora funciona
+  GoogleSignInAccount? _currentUser;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
   }
-  // No botão de conectar, após signIn:
-  setState(() {}); // força rebuild para mostrar estado conectado
+
+  Future<void> _loadUser() async {
+    final user = await GoogleAuthService.currentUser();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _signIn() async {
+    final user = await GoogleAuthService.signIn();
+    if (user != null) {
+      await ref.read(syncServiceProvider).checkAndPullOnStartup();
+    }
+    if (mounted) {
+      setState(() => _currentUser = user);
+    }
+  }
+
+  Future<void> _signOut() async {
+    await GoogleAuthService.signOut();
+    if (mounted) {
+      setState(() => _currentUser = null);
+    }
+  }
+
+  Future<void> _syncNow() async {
+    await ref.read(syncServiceProvider).forceUpload();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Backup enviado ao Google Drive'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: widget.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: widget.borderColor),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final isConnected = _currentUser != null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: widget.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.sync,
+                  color: isConnected
+                      ? AppColors.primary
+                      : AppColors.textSecondaryLight,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isConnected
+                          ? 'Sincronização ativa'
+                          : 'Sincronização desativada',
+                      style: AppTextStyles.bodyBold(widget.textPrimary),
+                    ),
+                    Text(
+                      isConnected
+                          ? _currentUser!.email
+                          : 'Conecte sua conta Google',
+                      style: AppTextStyles.label(widget.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (isConnected) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _syncNow,
+                    child: const Text('Sincronizar agora'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _signOut,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.danger),
+                  ),
+                  child: Text(
+                    'Desconectar',
+                    style: AppTextStyles.bodyBold(AppColors.danger),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _signIn,
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('Conectar com Google'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

@@ -1,18 +1,16 @@
 import 'dart:convert';
 import '../database/app_database.dart';
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart';
 
 class MergeService {
   final AppDatabase db;
 
   MergeService(this.db);
 
-  // Serializa o banco local em JSON (reutiliza a lógica do BackupService)
   Future<String> exportToJson() async {
     final now = DateTime.now();
 
-    final accounts = await db.accountsDao.watchAllAccounts().first;
-    final allAccounts = await db.managers.accounts.get(); // inclui deletados
+    final allAccounts = await db.managers.accounts.get();
     final categories = await db.managers.categories.get();
     final transactions = await db.managers.transactions.get();
     final budgets = await db.managers.budgets.get();
@@ -33,8 +31,6 @@ class MergeService {
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
-  // Aplica merge do JSON remoto com o estado local
-  // Retorna o JSON do estado merged (para fazer upload imediato)
   Future<String> mergeFromJson(String remoteJson) async {
     final remote = jsonDecode(remoteJson) as Map<String, dynamic>;
 
@@ -49,7 +45,6 @@ class MergeService {
       await _applyCascadeDeletes();
     });
 
-    // Exporta o estado merged para retornar
     return exportToJson();
   }
 
@@ -66,11 +61,10 @@ class MergeService {
           .getSingleOrNull();
 
       if (existing == null) {
-        // Não existe localmente — inserir
         await db.into(db.accounts).insert(
-              AccountsCompanion.insert(
+              AccountsCompanion(
                 id: Value(remoteId),
-                name: raw['name'] as String,
+                name: Value(raw['name'] as String),
                 type: Value(raw['type'] as String? ?? 'checking'),
                 initialBalance:
                     Value((raw['initialBalance'] as num?)?.toDouble() ?? 0),
@@ -83,7 +77,6 @@ class MergeService {
               ),
             );
       } else {
-        // Existe — último updatedAt vence
         final localUpdatedAt = existing.updatedAt;
         if (remoteUpdatedAt > localUpdatedAt) {
           await (db.update(db.accounts)
@@ -116,9 +109,9 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.categories).insert(
-              CategoriesCompanion.insert(
+              CategoriesCompanion(
                 id: Value(remoteId),
-                name: raw['name'] as String,
+                name: Value(raw['name'] as String),
                 type: Value(raw['type'] as String? ?? 'expense'),
                 color: Value(raw['color'] as int?),
                 icon: Value(raw['icon'] as String?),
@@ -158,13 +151,13 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.transactions).insert(
-              TransactionsCompanion.insert(
+              TransactionsCompanion(
                 id: Value(remoteId),
-                accountId: raw['accountId'] as String,
+                accountId: Value(raw['accountId'] as String),
                 categoryId: Value(raw['categoryId'] as String?),
                 type: Value(raw['type'] as String? ?? 'expense'),
-                amount: (raw['amount'] as num).toDouble(),
-                date: raw['date'] as int,
+                amount: Value((raw['amount'] as num).toDouble()),
+                date: Value(raw['date'] as int),
                 description: Value(raw['description'] as String?),
                 notes: Value(raw['notes'] as String?),
                 paymentMethod: Value(raw['paymentMethod'] as String?),
@@ -227,12 +220,12 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.budgets).insert(
-              BudgetsCompanion.insert(
+              BudgetsCompanion(
                 id: Value(remoteId),
-                categoryId: raw['categoryId'] as String,
-                year: raw['year'] as int,
-                month: raw['month'] as int,
-                limitAmount: (raw['limitAmount'] as num).toDouble(),
+                categoryId: Value(raw['categoryId'] as String),
+                year: Value(raw['year'] as int),
+                month: Value(raw['month'] as int),
+                limitAmount: Value((raw['limitAmount'] as num).toDouble()),
                 createdAt: Value(raw['createdAt'] as int? ?? 0),
                 updatedAt: Value(remoteUpdatedAt),
                 deletedAt: Value(remoteDeletedAt),
@@ -267,11 +260,10 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.goals).insert(
-              GoalsCompanion.insert(
+              GoalsCompanion(
                 id: Value(remoteId),
-                name: raw['name'] as String,
-                targetAmount: (raw['targetAmount'] as num).toDouble(),
-                // currentAmount NÃO vem do JSON — será recalculado
+                name: Value(raw['name'] as String),
+                targetAmount: Value((raw['targetAmount'] as num).toDouble()),
                 targetDate: Value(raw['targetDate'] as int?),
                 accountId: Value(raw['accountId'] as String?),
                 color: Value(raw['color'] as int?),
@@ -296,7 +288,6 @@ class MergeService {
             status: Value(raw['status'] as String? ?? 'active'),
             updatedAt: Value(remoteUpdatedAt),
             deletedAt: Value(remoteDeletedAt),
-            // currentAmount deliberadamente omitido — recalculado depois
           ));
         }
       }
@@ -315,11 +306,11 @@ class MergeService {
 
       if (existing == null) {
         await db.into(db.goalContributions).insert(
-              GoalContributionsCompanion.insert(
+              GoalContributionsCompanion(
                 id: Value(remoteId),
-                goalId: raw['goalId'] as String,
-                amount: (raw['amount'] as num).toDouble(),
-                date: raw['date'] as int,
+                goalId: Value(raw['goalId'] as String),
+                amount: Value((raw['amount'] as num).toDouble()),
+                date: Value(raw['date'] as int),
                 note: Value(raw['note'] as String?),
                 createdAt: Value(raw['createdAt'] as int? ?? 0),
                 updatedAt: Value(remoteUpdatedAt),
@@ -342,21 +333,17 @@ class MergeService {
     }
   }
 
-  // Recalcula currentAmount de todas as metas a partir das contribuições
-  // Nunca confia no valor serializado — sempre recomputa
   Future<void> _recalculateGoalAmounts() async {
     final allGoals = await db.select(db.goals).get();
 
     for (final goal in allGoals) {
       final contributions = await (db.select(db.goalContributions)
-            ..where((c) =>
-                c.goalId.equals(goal.id) & c.deletedAt.isNull()))
+            ..where((c) => c.goalId.equals(goal.id))
+            ..where((c) => c.deletedAt.isNull())) // Encadeamento funciona como AND
           .get();
 
-      final total =
-          contributions.fold(0.0, (sum, c) => sum + c.amount);
+      final total = contributions.fold(0.0, (sum, c) => sum + c.amount);
 
-      // Atualiza status se atingiu a meta
       final newStatus = total >= goal.targetAmount && goal.deletedAt == null
           ? 'completed'
           : goal.status == 'completed' && total < goal.targetAmount
@@ -371,38 +358,33 @@ class MergeService {
     }
   }
 
-  // Propaga soft deletes em cascata após o merge
-  // Ex: conta deletada → deleta transações e metas vinculadas
   Future<void> _applyCascadeDeletes() async {
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    // Contas deletadas → transações e metas vinculadas
     final deletedAccounts = await (db.select(db.accounts)
           ..where((a) => a.deletedAt.isNotNull()))
         .get();
 
     for (final account in deletedAccounts) {
-      // Transações
+      // Transações vinculadas
       await (db.update(db.transactions)
-            ..where((t) =>
-                t.accountId.equals(account.id) &
-                t.deletedAt.isNull()))
+            ..where((t) => t.accountId.equals(account.id))
+            ..where((t) => t.deletedAt.isNull()))
           .write(TransactionsCompanion(
         deletedAt: Value(now),
         updatedAt: Value(now),
       ));
 
-      // Metas → e suas contribuições
+      // Metas vinculadas
       final linkedGoals = await (db.select(db.goals)
-            ..where((g) =>
-                g.accountId.equals(account.id) &
-                g.deletedAt.isNull()))
+            ..where((g) => g.accountId.equals(account.id))
+            ..where((g) => g.deletedAt.isNull()))
           .get();
 
       for (final goal in linkedGoals) {
         await (db.update(db.goalContributions)
-              ..where((c) =>
-                  c.goalId.equals(goal.id) & c.deletedAt.isNull()))
+              ..where((c) => c.goalId.equals(goal.id))
+              ..where((c) => c.deletedAt.isNull()))
             .write(GoalContributionsCompanion(
           deletedAt: Value(now),
           updatedAt: Value(now),
@@ -417,24 +399,23 @@ class MergeService {
       }
     }
 
-    // Metas deletadas (diretamente) → contribuições vinculadas
+    // Metas deletadas diretamente
     final deletedGoals = await (db.select(db.goals)
           ..where((g) => g.deletedAt.isNotNull()))
         .get();
 
     for (final goal in deletedGoals) {
       await (db.update(db.goalContributions)
-            ..where((c) =>
-                c.goalId.equals(goal.id) & c.deletedAt.isNull()))
-          .write(GoalContributionsCompanion(
-        deletedAt: Value(now),
-        updatedAt: Value(now),
-      ));
+            ..where((c) => c.goalId.equals(goal.id))
+            ..where((c) => c.deletedAt.isNull()))
+        .write(GoalContributionsCompanion(
+          deletedAt: Value(now),
+          updatedAt: Value(now),
+        ));
     }
 
-    // Contribuições órfãs (meta não existe ou foi deletada)
-    final allContributions =
-        await db.select(db.goalContributions).get();
+    // Contribuições órfãs
+    final allContributions = await db.select(db.goalContributions).get();
     for (final contribution in allContributions) {
       if (contribution.deletedAt != null) continue;
       final goal = await (db.select(db.goals)
