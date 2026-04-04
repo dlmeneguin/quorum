@@ -420,6 +420,56 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
     }
   }
 
+  Future<void> _deleteSyncData() async {
+    // Diálogo de confirmação
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Apagar dados de sincronização'),
+        content: const Text(
+          'Isso irá apagar o backup do Google Drive e sinalizar todos os dispositivos para desconectar. '
+          'Seus dados locais não serão afetados.\n\n'
+          'Tem certeza?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Apagar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Apagando dados de sincronização...'),
+          duration: Duration(seconds: 30),
+        ),
+      );
+    }
+
+    await ref.read(syncServiceProvider).deleteSyncData();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      setState(() => _currentUserEmail = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Dados de sincronização apagados. Conta desconectada.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -513,6 +563,23 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                   ),
                 ),
               ],
+            ),
+            // Após o Row com os botões de sync e desconectar, adicionar:
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _deleteSyncData,
+                icon: const Icon(Icons.delete_forever_outlined,
+                    size: 18, color: AppColors.danger),
+                label: Text(
+                  'Apagar dados de sincronização',
+                  style: AppTextStyles.bodyBold(AppColors.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.danger),
+                ),
+              ),
             ),
           ] else ...[
             SizedBox(

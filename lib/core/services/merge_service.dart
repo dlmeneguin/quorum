@@ -48,6 +48,131 @@ class MergeService {
     return exportToJson();
   }
 
+  Future<void> overwriteFromJson(String remoteJson) async {
+    final remote = jsonDecode(remoteJson) as Map<String, dynamic>;
+  
+    await db.transaction(() async {
+      // Apaga tudo na ordem inversa das FKs
+      await db.managers.goalContributions.delete();
+      await db.managers.goals.delete();
+      await db.managers.budgets.delete();
+      await db.managers.transactions.delete();
+      await db.managers.categories.delete();
+      await db.managers.accounts.delete();
+  
+      // Reinsere tudo do Drive
+      for (final raw in (remote['accounts'] as List? ?? [])) {
+        await db.into(db.accounts).insert(
+              AccountsCompanion.insert(
+                id: raw['id'] as String,
+                name: raw['name'] as String,
+                type: Value(raw['type'] as String? ?? 'checking'),
+                initialBalance:
+                    Value((raw['initialBalance'] as num?)?.toDouble() ?? 0),
+                color: Value(raw['color'] as int?),
+                icon: Value(raw['icon'] as String?),
+                isActive: Value(raw['isActive'] as bool? ?? true),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+  
+      for (final raw in (remote['categories'] as List? ?? [])) {
+        await db.into(db.categories).insert(
+              CategoriesCompanion.insert(
+                id: raw['id'] as String,
+                name: raw['name'] as String,
+                type: Value(raw['type'] as String? ?? 'expense'),
+                color: Value(raw['color'] as int?),
+                icon: Value(raw['icon'] as String?),
+                isDefault: Value(raw['isDefault'] as bool? ?? false),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+  
+      for (final raw in (remote['transactions'] as List? ?? [])) {
+        await db.into(db.transactions).insert(
+              TransactionsCompanion.insert(
+                id: raw['id'] as String,
+                accountId: raw['accountId'] as String,
+                amount: (raw['amount'] as num).toDouble(),
+                date: raw['date'] as int,
+                categoryId: Value(raw['categoryId'] as String?),
+                type: Value(raw['type'] as String? ?? 'expense'),
+                description: Value(raw['description'] as String?),
+                notes: Value(raw['notes'] as String?),
+                paymentMethod: Value(raw['paymentMethod'] as String?),
+                isRecurring: Value(raw['isRecurring'] as bool? ?? false),
+                recurrenceType: Value(raw['recurrenceType'] as String?),
+                recurrenceParentId: Value(raw['recurrenceParentId'] as String?),
+                installmentTotal: Value(raw['installmentTotal'] as int?),
+                installmentCurrent: Value(raw['installmentCurrent'] as int?),
+                installmentGroupId: Value(raw['installmentGroupId'] as String?),
+                transferPairId: Value(raw['transferPairId'] as String?),
+                isTransferOut: Value(raw['isTransferOut'] as bool?),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+  
+      for (final raw in (remote['budgets'] as List? ?? [])) {
+        await db.into(db.budgets).insert(
+              BudgetsCompanion.insert(
+                id: raw['id'] as String,
+                categoryId: raw['categoryId'] as String,
+                year: raw['year'] as int,
+                month: raw['month'] as int,
+                limitAmount: (raw['limitAmount'] as num).toDouble(),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+  
+      for (final raw in (remote['goals'] as List? ?? [])) {
+        await db.into(db.goals).insert(
+              GoalsCompanion.insert(
+                id: raw['id'] as String,
+                name: raw['name'] as String,
+                targetAmount: (raw['targetAmount'] as num).toDouble(),
+                currentAmount: Value((raw['currentAmount'] as num? ?? 0).toDouble()),
+                targetDate: Value(raw['targetDate'] as int?),
+                accountId: Value(raw['accountId'] as String?),
+                color: Value(raw['color'] as int?),
+                icon: Value(raw['icon'] as String?),
+                status: Value(raw['status'] as String? ?? 'active'),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+  
+      for (final raw in (remote['goalContributions'] as List? ?? [])) {
+        await db.into(db.goalContributions).insert(
+              GoalContributionsCompanion.insert(
+                id: raw['id'] as String,
+                goalId: raw['goalId'] as String,
+                amount: (raw['amount'] as num).toDouble(),
+                date: raw['date'] as int,
+                note: Value(raw['note'] as String?),
+                createdAt: Value(raw['createdAt'] as int? ?? 0),
+                updatedAt: Value(raw['updatedAt'] as int? ?? 0),
+                deletedAt: Value(raw['deletedAt'] as int?),
+              ),
+            );
+      }
+    });
+  }
+
   Future<void> _mergeAccounts(List remote) async {
     for (final raw in remote) {
       final remoteId = raw['id'] as String;
