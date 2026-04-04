@@ -340,7 +340,7 @@ class _SyncSection extends ConsumerStatefulWidget {
 }
 
 class _SyncSectionState extends ConsumerState<_SyncSection> {
-  GoogleSignInAccount? _currentUser;
+  String? _currentUserEmail;  // era GoogleSignInAccount?
   bool _loading = true;
 
   @override
@@ -350,20 +350,19 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
   }
 
   Future<void> _loadUser() async {
-    final user = await GoogleAuthService.currentUser();
+    final email = await GoogleAuthService.currentUserEmail();
     if (mounted) {
       setState(() {
-        _currentUser = user;
+        _currentUserEmail = email;
         _loading = false;
       });
     }
   }
 
   Future<void> _signIn() async {
-    final user = await GoogleAuthService.signIn();
-    if (user != null) {
-      setState(() => _currentUser = user);
-      // Aguarda o frame antes de checar sync para garantir que o token propagou
+    final email = await GoogleAuthService.signIn();
+    if (email != null) {
+      setState(() => _currentUserEmail = email);
       await Future.delayed(const Duration(milliseconds: 500));
       await ref.read(syncServiceProvider).checkAndPullOnStartup();
     } else {
@@ -381,14 +380,13 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
   Future<void> _signOut() async {
     await GoogleAuthService.signOut();
     if (mounted) {
-      setState(() => _currentUser = null);
+      setState(() => _currentUserEmail = null);
     }
   }
 
   Future<void> _syncNow() async {
-    // Verifica autenticação antes de tentar
-    final user = await GoogleAuthService.currentUser();
-    if (user == null) {
+    final email = await GoogleAuthService.currentUserEmail();
+    if (email == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -442,7 +440,7 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
       );
     }
 
-    final isConnected = _currentUser != null;
+    final isConnected = _currentUserEmail != null;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -484,7 +482,7 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                     ),
                     Text(
                       isConnected
-                          ? _currentUser!.email
+                          ? _currentUserEmail!
                           : 'Conecte sua conta Google',
                       style: AppTextStyles.label(widget.textSecondary),
                     ),

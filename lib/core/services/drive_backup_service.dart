@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'google_auth_service.dart';
 
@@ -7,51 +8,61 @@ class DriveBackupService {
   static const _mimeType = 'application/json';
   static const _spaces = 'appDataFolder';
 
-  // Faz upload do JSON para o Drive, substituindo o arquivo existente
   static Future<bool> upload(String jsonContent) async {
     try {
       final api = await GoogleAuthService.getDriveApi();
-      if (api == null) return false;
+      if (api == null) {
+        debugPrint('[Drive] upload: getDriveApi retornou null.');
+        return false;
+      }
 
+      final encoded = utf8.encode(jsonContent);
       final existingId = await _getFileId(api);
+
       final media = drive.Media(
-        Stream.value(utf8.encode(jsonContent)),
-        utf8.encode(jsonContent).length,
+        Stream.value(encoded),
+        encoded.length,
         contentType: _mimeType,
       );
 
       if (existingId != null) {
-        // Atualiza o arquivo existente
+        debugPrint('[Drive] Atualizando arquivo existente: $existingId');
         await api.files.update(
           drive.File(),
           existingId,
           uploadMedia: media,
         );
       } else {
-        // Cria o arquivo pela primeira vez
+        debugPrint('[Drive] Criando novo arquivo no Drive.');
         final file = drive.File()
           ..name = _fileName
           ..parents = [_spaces];
-        await api.files.create(
-          file,
-          uploadMedia: media,
-        );
+        await api.files.create(file, uploadMedia: media);
       }
+
+      debugPrint('[Drive] Upload concluído.');
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[Drive] Erro em upload: $e\n$st');
       return false;
     }
   }
 
-  // Baixa o JSON do Drive. Retorna null se não existir ou em erro.
   static Future<String?> download() async {
     try {
       final api = await GoogleAuthService.getDriveApi();
-      if (api == null) return null;
+      if (api == null) {
+        debugPrint('[Drive] download: getDriveApi retornou null.');
+        return null;
+      }
 
       final fileId = await _getFileId(api);
-      if (fileId == null) return null;
+      if (fileId == null) {
+        debugPrint('[Drive] download: arquivo não encontrado no Drive.');
+        return null;
+      }
 
+      debugPrint('[Drive] Baixando arquivo: $fileId');
       final response = await api.files.get(
         fileId,
         downloadOptions: drive.DownloadOptions.fullMedia,
@@ -59,13 +70,14 @@ class DriveBackupService {
 
       final bytes = await response.stream.toList();
       final content = bytes.expand((b) => b).toList();
+      debugPrint('[Drive] Download concluído (${content.length} bytes).');
       return utf8.decode(content);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[Drive] Erro em download: $e\n$st');
       return null;
     }
   }
 
-  // Retorna o timestamp de modificação do arquivo no Drive, ou null se não existir
   static Future<DateTime?> getRemoteModifiedTime() async {
     try {
       final api = await GoogleAuthService.getDriveApi();
@@ -80,18 +92,25 @@ class DriveBackupService {
       ) as drive.File;
 
       return file.modifiedTime;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[Drive] Erro em getRemoteModifiedTime: $e\n$st');
       return null;
     }
   }
 
-  // Busca o ID do arquivo de sync no Drive (necessário para update)
   static Future<String?> _getFileId(drive.DriveApi api) async {
-    final list = await api.files.list(
-      spaces: _spaces,
-      q: "name = '$_fileName'",
-      $fields: 'files(id)',
-    );
-    return list.files?.firstOrNull?.id;
+    try {
+      final list = await api.files.list(
+        spaces: _spaces,
+        q: "name = '$_fileName'",
+        $fields: 'files(id)',
+      );
+      final id = list.files?.firstOrNull?.id;
+      debugPrint('[Drive] _getFileId: $id');
+      return id;
+    } catch (e, st) {
+      debugPrint('[Drive] Erro em _getFileId: $e\n$st');
+      return null;
+    }
   }
 }
