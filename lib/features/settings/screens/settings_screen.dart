@@ -363,8 +363,8 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
     final email = await GoogleAuthService.signIn();
     if (email != null) {
       setState(() => _currentUserEmail = email);
-      await Future.delayed(const Duration(milliseconds: 500));
-      await ref.read(syncServiceProvider).checkAndPullOnStartup();
+      // onUserConnected: Drive vence se tiver dados, upload se estiver vazio
+      await ref.read(syncServiceProvider).onUserConnected();
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
