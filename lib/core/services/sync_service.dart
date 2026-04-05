@@ -15,7 +15,7 @@ class SyncService {
   bool _isSyncing = false;
 
   static const _lastSyncKey = 'last_sync_timestamp';
-  static const _checkInterval = Duration(minutes: 5);
+  static const _checkInterval = Duration(seconds: 30);
 
   SyncService(this.db) : _merge = MergeService(db);
 

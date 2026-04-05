@@ -8,8 +8,7 @@ import '../../../core/services/backup_service.dart';
 import '../../../core/services/google_auth_service.dart';
 import '../../../core/services/sync_service_provider.dart';
 import '../providers/theme_provider.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../../pluggy/screens/pluggy_test_screen.dart';
+import '../../pluggy/providers/pluggy_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -97,20 +96,11 @@ class SettingsScreen extends ConsumerWidget {
                   Text('Open Finance',
                       style: AppTextStyles.label(textSecondary)),
                   const SizedBox(height: 8),
-                  _SettingsItem(
-                    icon: Icons.account_balance_rounded,
-                    label: 'Importar dados bancários',
-                    subtitle: 'Conecte via Pluggy / MeuPluggy (Open Finance)',
-                    color: const Color(0xFF6366F1),
+                  _PluggySection(
                     surfaceColor: surfaceColor,
                     borderColor: borderColor,
                     textPrimary: textPrimary,
                     textSecondary: textSecondary,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PluggyTestScreen(),
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -158,11 +148,251 @@ class SettingsScreen extends ConsumerWidget {
                       }
                     },
                   ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Seção Pluggy ──
+
+class _PluggySection extends ConsumerStatefulWidget {
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  const _PluggySection({
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  @override
+  ConsumerState<_PluggySection> createState() => _PluggySectionState();
+}
+
+class _PluggySectionState extends ConsumerState<_PluggySection> {
+  Future<void> _openConfigDialog({required bool turnOnAfter}) async {
+    final notifier = ref.read(pluggyConfigProvider.notifier);
+    final config = ref.read(pluggyConfigProvider).value;
+
+    final clientIdCtrl =
+        TextEditingController(text: config?.clientId ?? '');
+    final clientSecretCtrl =
+        TextEditingController(text: config?.clientSecret ?? '');
+    final itemIdCtrl =
+        TextEditingController(text: config?.itemId ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final tp = isDark
+              ? AppColors.textPrimaryDark
+              : AppColors.textPrimaryLight;
+          final ts = isDark
+              ? AppColors.textSecondaryDark
+              : AppColors.textSecondaryLight;
+
+          bool canSave() =>
+              clientIdCtrl.text.trim().isNotEmpty &&
+              clientSecretCtrl.text.trim().isNotEmpty &&
+              itemIdCtrl.text.trim().isNotEmpty;
+
+          return AlertDialog(
+            title: Text('Configurar Pluggy',
+                style: AppTextStyles.sectionTitle(tp)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Obtenha as credenciais em dashboard.pluggy.ai',
+                    style: AppTextStyles.label(ts),
+                  ),
+                  const SizedBox(height: 16),
+                  _DialogField(
+                    label: 'Client ID',
+                    controller: clientIdCtrl,
+                    onChanged: (_) => setS(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogField(
+                    label: 'Client Secret',
+                    controller: clientSecretCtrl,
+                    obscure: true,
+                    onChanged: (_) => setS(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogField(
+                    label: 'Item ID',
+                    controller: itemIdCtrl,
+                    onChanged: (_) => setS(() {}),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'O Item ID é obtido no Demo da sua Application\n'
+                    '(menu ⋮ → "Copiar Item ID")',
+                    style: AppTextStyles.label(ts),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: canSave()
+                    ? () => Navigator.pop(ctx, true)
+                    : null,
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary),
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (saved == true) {
+      await notifier.saveCredentials(
+        clientId: clientIdCtrl.text.trim(),
+        clientSecret: clientSecretCtrl.text.trim(),
+        itemId: itemIdCtrl.text.trim(),
+      );
+      if (turnOnAfter) {
+        await notifier.setEnabled(true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final configAsync = ref.watch(pluggyConfigProvider);
+
+    return configAsync.when(
+      data: (config) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: widget.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: widget.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cabeçalho + switch
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.account_balance_rounded,
+                      color: Color(0xFF6366F1), size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Importação automática',
+                          style: AppTextStyles.bodyBold(widget.textPrimary)),
+                      Text(
+                        config.isConfigured
+                            ? 'Pluggy configurado'
+                            : 'Configure para ativar',
+                        style: AppTextStyles.label(widget.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: config.enabled && config.isConfigured,
+                  activeColor: AppColors.primary,
+                  onChanged: (value) async {
+                    final notifier =
+                        ref.read(pluggyConfigProvider.notifier);
+                    if (value) {
+                      // Quer ligar
+                      if (!config.isConfigured) {
+                        // Abre diálogo de configuração e liga após salvar
+                        await _openConfigDialog(turnOnAfter: true);
+                      } else {
+                        await notifier.setEnabled(true);
+                      }
+                    } else {
+                      await notifier.setEnabled(false);
+                    }
+                  },
+                ),
+              ],
+            ),
+
+            // Botão de editar credenciais (sempre visível)
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openConfigDialog(turnOnAfter: false),
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: Text(
+                  config.isConfigured
+                      ? 'Editar credenciais'
+                      : 'Configurar credenciais',
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final bool obscure;
+  final ValueChanged<String> onChanged;
+
+  const _DialogField({
+    required this.label,
+    required this.controller,
+    this.obscure = false,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
       ),
     );
   }
@@ -340,7 +570,7 @@ class _SyncSection extends ConsumerStatefulWidget {
 }
 
 class _SyncSectionState extends ConsumerState<_SyncSection> {
-  String? _currentUserEmail;  // era GoogleSignInAccount?
+  String? _currentUserEmail;
   bool _loading = true;
 
   @override
@@ -363,7 +593,6 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
     final email = await GoogleAuthService.signIn();
     if (email != null) {
       setState(() => _currentUserEmail = email);
-      // onUserConnected: Drive vence se tiver dados, upload se estiver vazio
       await ref.read(syncServiceProvider).onUserConnected();
     } else {
       if (mounted) {
@@ -379,9 +608,7 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
 
   Future<void> _signOut() async {
     await GoogleAuthService.signOut();
-    if (mounted) {
-      setState(() => _currentUserEmail = null);
-    }
+    if (mounted) setState(() => _currentUserEmail = null);
   }
 
   Future<void> _syncNow() async {
@@ -397,7 +624,6 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
       }
       return;
     }
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -406,9 +632,7 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
         ),
       );
     }
-
     await ref.read(syncServiceProvider).forceUpload();
-
     if (mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -421,15 +645,13 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
   }
 
   Future<void> _deleteSyncData() async {
-    // Diálogo de confirmação
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Apagar dados de sincronização'),
         content: const Text(
           'Isso irá apagar o backup do Google Drive e sinalizar todos os dispositivos para desconectar. '
-          'Seus dados locais não serão afetados.\n\n'
-          'Tem certeza?',
+          'Seus dados locais não serão afetados.\n\nTem certeza?',
         ),
         actions: [
           TextButton(
@@ -438,15 +660,14 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            style:
+                FilledButton.styleFrom(backgroundColor: AppColors.danger),
             child: const Text('Apagar'),
           ),
         ],
       ),
     );
-
     if (confirmed != true) return;
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -455,15 +676,13 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
         ),
       );
     }
-
     await ref.read(syncServiceProvider).deleteSyncData();
-
     if (mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       setState(() => _currentUserEmail = null);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Dados de sincronização apagados. Conta desconectada.'),
+          content: Text('Dados de sincronização apagados.'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -482,10 +701,9 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
         ),
         child: const Center(
           child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2)),
         ),
       );
     }
@@ -511,13 +729,11 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.sync,
-                  color: isConnected
-                      ? AppColors.primary
-                      : AppColors.textSecondaryLight,
-                  size: 20,
-                ),
+                child: Icon(Icons.sync,
+                    color: isConnected
+                        ? AppColors.primary
+                        : AppColors.textSecondaryLight,
+                    size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -555,16 +771,13 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                 OutlinedButton(
                   onPressed: _signOut,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.danger),
-                  ),
-                  child: Text(
-                    'Desconectar',
-                    style: AppTextStyles.bodyBold(AppColors.danger),
-                  ),
+                      side: const BorderSide(color: AppColors.danger)),
+                  child: Text('Desconectar',
+                      style:
+                          AppTextStyles.bodyBold(AppColors.danger)),
                 ),
               ],
             ),
-            // Após o Row com os botões de sync e desconectar, adicionar:
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -572,13 +785,10 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                 onPressed: _deleteSyncData,
                 icon: const Icon(Icons.delete_forever_outlined,
                     size: 18, color: AppColors.danger),
-                label: Text(
-                  'Apagar dados de sincronização',
-                  style: AppTextStyles.bodyBold(AppColors.danger),
-                ),
+                label: Text('Apagar dados de sincronização',
+                    style: AppTextStyles.bodyBold(AppColors.danger)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.danger),
-                ),
+                    side: const BorderSide(color: AppColors.danger)),
               ),
             ),
           ] else ...[
@@ -589,8 +799,7 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
                 icon: const Icon(Icons.login, size: 18),
                 label: const Text('Conectar com Google'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                ),
+                    backgroundColor: AppColors.primary),
               ),
             ),
           ],
