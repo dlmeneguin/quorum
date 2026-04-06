@@ -9,6 +9,7 @@ import '../../../core/services/google_auth_service.dart';
 import '../../../core/services/sync_service_provider.dart';
 import '../providers/theme_provider.dart';
 import '../../pluggy/providers/pluggy_provider.dart';
+import '../../pluggy/screens/pluggy_test_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -344,7 +345,7 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
               ],
             ),
 
-            // Botão de editar credenciais (sempre visível)
+            // Botão de editar credenciais
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -358,6 +359,26 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
                 ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            // Botão de teste (debug)
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PluggyTestScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.bug_report_outlined, size: 16,
+                    color: Color(0xFF6366F1)),
+                label: const Text('Tela de testes (debug)',
+                    style: TextStyle(color: Color(0xFF6366F1))),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  side: const BorderSide(color: Color(0xFF6366F1)),
                 ),
               ),
             ),

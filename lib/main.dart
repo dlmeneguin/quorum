@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -31,7 +32,6 @@ void main() async {
   );
 }
 
-/// Wrapper que verifica novas transações do Pluggy após o app carregar
 class _AppWithPluggyCheck extends ConsumerStatefulWidget {
   const _AppWithPluggyCheck();
 
@@ -46,7 +46,6 @@ class _AppWithPluggyCheckState extends ConsumerState<_AppWithPluggyCheck> {
   @override
   void initState() {
     super.initState();
-    // Aguarda o primeiro frame antes de verificar — garante que o Navigator está pronto
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPluggy());
   }
 
@@ -54,22 +53,29 @@ class _AppWithPluggyCheckState extends ConsumerState<_AppWithPluggyCheck> {
     if (_pluggyChecked) return;
     _pluggyChecked = true;
 
-    // Pequeno delay para garantir que o app carregou visualmente
+    // Delay para o app carregar visualmente
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    final notifier = ref.read(pluggyConfigProvider.notifier);
-    final txs = await notifier.fetchNewTransactions();
+    try {
+      final notifier = ref.read(pluggyConfigProvider.notifier);
+      debugPrint('[Pluggy] Verificando novas transações...');
 
-    if (txs.isEmpty || !mounted) return;
+      final txs = await notifier.fetchNewTransactions();
 
-    // Navega para a tela de revisão
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PluggyImportScreen(transactions: txs),
-        fullscreenDialog: true,
-      ),
-    );
+      debugPrint('[Pluggy] Transações encontradas: ${txs.length}');
+
+      if (txs.isEmpty || !mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PluggyImportScreen(transactions: txs),
+          fullscreenDialog: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[Pluggy] Erro na verificação inicial: $e');
+    }
   }
 
   @override

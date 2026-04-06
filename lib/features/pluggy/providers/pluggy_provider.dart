@@ -45,13 +45,8 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
   Future<void> setEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(prefPluggyEnabled, value);
-    state = AsyncData((state.value ?? await _load()).let((c) => PluggyConfig(
-          enabled: value,
-          clientId: c.clientId,
-          clientSecret: c.clientSecret,
-          itemId: c.itemId,
-          lastImportMs: c.lastImportMs,
-        )));
+    // Recarrega o estado completo do disco para garantir consistência
+    state = AsyncData(await _load());
   }
 
   Future<void> saveCredentials({
@@ -63,19 +58,16 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
     await prefs.setString(prefPluggyClientId, clientId);
     await prefs.setString(prefPluggyClientSecret, clientSecret);
     await prefs.setString(prefPluggyItemId, itemId);
-    state = AsyncData(PluggyConfig(
-      enabled: state.value?.enabled ?? false,
-      clientId: clientId,
-      clientSecret: clientSecret,
-      itemId: itemId,
-      lastImportMs: state.value?.lastImportMs ?? 0,
-    ));
+    state = AsyncData(await _load());
   }
 
-  /// Busca transações novas. Retorna lista vazia se não configurado ou desabilitado.
+  /// Busca transações novas.
+  /// Lê direto do SharedPreferences para não depender do estado async do provider.
   Future<List<Map<String, dynamic>>> fetchNewTransactions() async {
-    final config = state.value;
-    if (config == null || !config.enabled || !config.isConfigured) return [];
+    // Lê sempre direto do disco — evita problema de state.value ser null
+    final config = await _load();
+
+    if (!config.enabled || !config.isConfigured) return [];
 
     try {
       final apiKey = await PluggyService.authenticate(
@@ -95,15 +87,11 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
         itemId: config.itemId,
         sinceMs: sinceMs,
       );
-    } catch (_) {
+    } catch (e) {
+      // Silencia erros de rede na inicialização — não deve travar o app
       return [];
     }
   }
-}
-
-// Extensão auxiliar para o let
-extension _Let<T> on T {
-  R let<R>(R Function(T) block) => block(this);
 }
 
 final pluggyConfigProvider =
