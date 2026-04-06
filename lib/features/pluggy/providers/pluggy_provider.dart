@@ -75,11 +75,11 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
         clientSecret: config.clientSecret,
       );
 
-      // Se nunca importou, pega os últimos 30 dias
+      // Se nunca importou, pega os últimos 2 dias
       final sinceMs = config.lastImportMs > 0
           ? config.lastImportMs
           : DateTime.now()
-              .subtract(const Duration(days: 30))
+              .subtract(const Duration(days: 2))
               .millisecondsSinceEpoch;
 
       return await PluggyService.fetchTransactionsSince(

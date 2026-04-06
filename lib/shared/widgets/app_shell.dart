@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -7,17 +8,20 @@ import '../../features/transactions/screens/transactions_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/goals/screens/goals_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/pluggy/providers/pluggy_provider.dart';
+import '../../features/pluggy/screens/pluggy_import_screen.dart';
 import 'alberto_widgets.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   int _selectedIndex = 0;
+  bool _pluggyChecked = false;
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: LucideIcons.layoutDashboard, label: 'Dashboard'),
@@ -34,6 +38,37 @@ class _AppShellState extends State<AppShell> {
     GoalsScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPluggy());
+  }
+
+  Future<void> _checkPluggy() async {
+    if (_pluggyChecked) return;
+    _pluggyChecked = true;
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+
+    try {
+      final notifier = ref.read(pluggyConfigProvider.notifier);
+
+      final txs = await notifier.fetchNewTransactions();
+
+      if (txs.isEmpty || !mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PluggyImportScreen(transactions: txs),
+          fullscreenDialog: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[Pluggy] Erro na verificação inicial: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +129,6 @@ class _DesktopLayout extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo / título
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
                   child: Text(
@@ -108,7 +142,6 @@ class _DesktopLayout extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
-                // Itens de navegação
                 ...navItems.asMap().entries.map((entry) {
                   final i = entry.key;
                   final item = entry.value;
@@ -122,7 +155,6 @@ class _DesktopLayout extends StatelessWidget {
                   );
                 }),
 
-                // Alberto na sidebar — só no tema Snoopy
                 if (isSnoopy) ...[
                   const Spacer(),
                   const AlbertoSidebarWidget(sidebarWidth: 220),
@@ -133,7 +165,6 @@ class _DesktopLayout extends StatelessWidget {
               ],
             ),
           ),
-          // Conteúdo principal
           Expanded(child: screens[selectedIndex]),
         ],
       ),
