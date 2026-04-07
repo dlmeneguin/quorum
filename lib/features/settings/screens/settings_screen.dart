@@ -276,6 +276,8 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
       if (turnOnAfter) {
         await notifier.setEnabled(true);
       }
+      // Sobe as credenciais para o Drive
+      ref.read(syncServiceProvider).scheduleUpload();
     }
   }
 
@@ -330,15 +332,17 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
                     final notifier =
                         ref.read(pluggyConfigProvider.notifier);
                     if (value) {
-                      // Quer ligar
                       if (!config.isConfigured) {
-                        // Abre diálogo de configuração e liga após salvar
                         await _openConfigDialog(turnOnAfter: true);
                       } else {
                         await notifier.setEnabled(true);
+                        // Sobe o novo estado para o Drive
+                        ref.read(syncServiceProvider).scheduleUpload();
                       }
                     } else {
                       await notifier.setEnabled(false);
+                      // Sobe o novo estado para o Drive
+                      ref.read(syncServiceProvider).scheduleUpload();
                     }
                   },
                 ),

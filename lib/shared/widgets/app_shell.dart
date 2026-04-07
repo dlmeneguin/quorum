@@ -48,6 +48,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       _pendingPluggyTxs = txs;
     } catch (e) {
       debugPrint('[AppShell] Erro no initialize: $e');
+      // Garante que o app continua mesmo com erro
+      _pendingPluggyTxs = [];
     }
   }
 
@@ -70,9 +72,11 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isReady) {
+    // CORRIGIDO: era "if (_isReady)" — estava invertido
+    if (!_isReady) {
       return SplashScreen(
         onReady: _initialize,
+        onDone: _onSplashDone,
       );
     }
 

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
-import '../../features/settings/providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
+  /// Chamado durante o splash. Quando este Future completar, o splash chama [onDone].
   final Future<void> Function() onReady;
 
-  const SplashScreen({super.key, required this.onReady});
+  /// Chamado quando [onReady] completar — o pai deve usar isso para sair do splash.
+  final VoidCallback onDone;
+
+  const SplashScreen({
+    super.key,
+    required this.onReady,
+    required this.onDone,
+  });
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -59,17 +65,24 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _startSequence() async {
     await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
     _logoController.forward();
+
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _dotsController.repeat(reverse: true);
-    // Aguarda o callback externo (pluggy check + auth)
+
+    // Aguarda o trabalho externo (verificação do Pluggy, etc.)
     await widget.onReady();
-    // Pequena pausa para o usuário ver o loading
+
+    // Pausa mínima para o usuário ver o splash
     await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      // Sinaliza ao pai que está pronto
-      _dotsController.stop();
-    }
+
+    if (!mounted) return;
+    _dotsController.stop();
+
+    // Avisa o pai que pode sair do splash
+    widget.onDone();
   }
 
   @override
@@ -87,7 +100,6 @@ class _SplashScreenState extends State<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo animado
             ScaleTransition(
               scale: _logoScale,
               child: FadeTransition(
@@ -127,7 +139,6 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
             const SizedBox(height: 60),
-            // Dots de loading
             FadeTransition(
               opacity: _dotsOpacity,
               child: _LoadingDots(),
@@ -171,6 +182,7 @@ class _LoadingDotsState extends State<_LoadingDots>
   Future<void> _startWave() async {
     while (mounted) {
       for (int i = 0; i < _controllers.length; i++) {
+        if (!mounted) return;
         _controllers[i].forward();
         await Future.delayed(const Duration(milliseconds: 120));
       }
