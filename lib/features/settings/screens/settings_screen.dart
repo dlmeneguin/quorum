@@ -436,7 +436,8 @@ class _ThemeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentMode = ref.watch(themeModeProvider);
+    final currentMode =
+        ref.watch(themeModeProvider).valueOrNull ?? AppThemeMode.system;
 
     final options = [
       (AppThemeMode.light, Icons.light_mode_outlined, 'Claro'),
@@ -459,8 +460,9 @@ class _ThemeSelector extends ConsumerWidget {
           final isSnoopy = mode == AppThemeMode.snoopy;
           return Expanded(
             child: GestureDetector(
-              onTap: () =>
-                  ref.read(themeModeProvider.notifier).state = mode,
+              onTap: () => ref
+                  .read(themeModeProvider.notifier)
+                  .setMode(mode),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -477,7 +479,8 @@ class _ThemeSelector extends ConsumerWidget {
                     Icon(
                       icon,
                       size: 18,
-                      color: isSelected ? Colors.white : textSecondary,
+                      color:
+                          isSelected ? Colors.white : textSecondary,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -487,8 +490,9 @@ class _ThemeSelector extends ConsumerWidget {
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.w400,
-                        color:
-                            isSelected ? Colors.white : textSecondary,
+                        color: isSelected
+                            ? Colors.white
+                            : textSecondary,
                       ),
                     ),
                   ],

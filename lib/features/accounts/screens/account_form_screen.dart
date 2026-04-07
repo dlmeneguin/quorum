@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
-import '../../../core/utils/currency.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../core/services/sync_service_provider.dart';
 
 class AccountFormScreen extends ConsumerStatefulWidget {
-  final Account? account; // null = criação, preenchido = edição
+  final Account? account;
 
   const AccountFormScreen({super.key, this.account});
 
@@ -27,6 +26,9 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   String _selectedType = 'checking';
   Color _selectedColor = AppColors.primary;
   bool _isSaving = false;
+
+  // Padrão centavos — igual ao resto do app
+  int _balanceCents = 0;
 
   final _types = [
     ('checking', 'Conta Corrente', Icons.account_balance_outlined),
@@ -46,16 +48,35 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     const Color(0xFFEC4899),
   ];
 
+  String _formatCents(int cents) {
+    final value = cents / 100;
+    return value.toStringAsFixed(2).replaceAll('.', ',');
+  }
+
+  void _onBalanceChanged(String input) {
+    final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+    _balanceCents = int.tryParse(digits) ?? 0;
+    final formatted = _formatCents(_balanceCents);
+    _balanceController.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.account != null) {
       final a = widget.account!;
       _nameController.text = a.name;
-      _balanceController.text =
-          CurrencyUtils.format(a.initialBalance);
+      _balanceCents = (a.initialBalance * 100).round();
+      _balanceController.text = _formatCents(_balanceCents);
       _selectedType = a.type;
       if (a.color != null) _selectedColor = Color(a.color!);
+    } else {
+      _balanceCents = 0;
+      _balanceController.text = _formatCents(0);
     }
   }
 
@@ -71,8 +92,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     setState(() => _isSaving = true);
 
     final db = ref.read(databaseProvider);
-    final amount =
-        CurrencyUtils.parse(_balanceController.text) ?? 0.0;
+    final amount = _balanceCents / 100;
 
     final companion = AccountsCompanion(
       id: widget.account != null
@@ -142,8 +162,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 final (value, label, icon) = t;
                 final isSelected = _selectedType == value;
                 return GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedType = value),
+                  onTap: () => setState(() => _selectedType = value),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(
@@ -191,24 +210,30 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Saldo inicial
+            // Saldo inicial — padrão centavos
             _SectionLabel('Saldo inicial', textSecondary),
             const SizedBox(height: 8),
             TextFormField(
               controller: _balanceController,
-              validator: (v) {
-                if (v == null || v.isEmpty) return null;
-                final parsed = CurrencyUtils.parse(v);
-                if (parsed == null) return 'Valor inválido';
-                return null;
-              },
-              keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true),
-              decoration: const InputDecoration(
-                hintText: 'R\$ 0,00',
-                prefixText: 'R\$ ',
+              keyboardType: TextInputType.number,
+              onChanged: _onBalanceChanged,
+              decoration: InputDecoration(
+                hintText: '0,00',
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 8),
+                  child: Text(
+                    'R\$',
+                    style: AppTextStyles.bodyBold(AppColors.primary),
+                  ),
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
               ),
-              style: AppTextStyles.body(textPrimary),
+              style: AppTextStyles.splineSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: textPrimary,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -221,8 +246,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
               children: _colors.map((color) {
                 final isSelected = _selectedColor == color;
                 return GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedColor = color),
+                  onTap: () => setState(() => _selectedColor = color),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     width: 36,
@@ -231,10 +255,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                       color: color,
                       shape: BoxShape.circle,
                       border: isSelected
-                          ? Border.all(
-                              color: color,
-                              width: 3,
-                            )
+                          ? Border.all(color: color, width: 3)
                           : null,
                       boxShadow: isSelected
                           ? [
@@ -298,9 +319,6 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppTextStyles.label(color),
-    );
+    return Text(text, style: AppTextStyles.label(color));
   }
 }

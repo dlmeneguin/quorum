@@ -10,9 +10,12 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appThemeMode = ref.watch(themeModeProvider);
+    final appThemeModeAsync = ref.watch(themeModeProvider);
 
-    // Para o tema Snoopy, forçamos ThemeMode.light mas com ThemeData customizado
+    // Enquanto carrega do SharedPreferences, usa system
+    final appThemeMode =
+        appThemeModeAsync.valueOrNull ?? AppThemeMode.system;
+
     final isSnoopy = appThemeMode == AppThemeMode.snoopy;
 
     final themeMode = switch (appThemeMode) {

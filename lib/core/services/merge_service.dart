@@ -1,6 +1,8 @@
 import 'dart:convert';
 import '../database/app_database.dart';
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/pluggy/providers/pluggy_provider.dart';
 
 class MergeService {
   final AppDatabase db;
@@ -9,14 +11,24 @@ class MergeService {
 
   Future<String> exportToJson() async {
     final now = DateTime.now();
-
+  
     final allAccounts = await db.managers.accounts.get();
     final categories = await db.managers.categories.get();
     final transactions = await db.managers.transactions.get();
     final budgets = await db.managers.budgets.get();
     final goals = await db.managers.goals.get();
     final contributions = await db.managers.goalContributions.get();
-
+  
+    // Exporta config do Pluggy (secret criptografado)
+    final prefs = await SharedPreferences.getInstance();
+    final pluggyMap = {
+      'pluggy_client_id': prefs.getString('pluggy_client_id') ?? '',
+      'pluggy_client_secret_enc':
+          prefs.getString('pluggy_client_secret_enc') ?? '',
+      'pluggy_item_id': prefs.getString('pluggy_item_id') ?? '',
+      'pluggy_enabled': prefs.getBool('pluggy_enabled') ?? false,
+    };
+  
     final payload = {
       'version': 2,
       'exportedAt': now.toIso8601String(),
@@ -26,8 +38,9 @@ class MergeService {
       'budgets': budgets.map((e) => e.toJson()).toList(),
       'goals': goals.map((e) => e.toJson()).toList(),
       'goalContributions': contributions.map((e) => e.toJson()).toList(),
+      'settings': pluggyMap,
     };
-
+  
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
@@ -35,6 +48,29 @@ class MergeService {
     final remote = jsonDecode(remoteJson) as Map<String, dynamic>;
 
     await db.transaction(() async {
+      // Merge das configurações do Pluggy (settings)
+      final remoteSettings =
+          remote['settings'] as Map<String, dynamic>?;
+      if (remoteSettings != null) {
+        final prefs = await SharedPreferences.getInstance();
+        // Só sobrescreve se o remote tiver credenciais configuradas
+        final remoteClientId =
+            remoteSettings['pluggy_client_id'] as String? ?? '';
+        if (remoteClientId.isNotEmpty) {
+          await prefs.setString(
+              'pluggy_client_id', remoteClientId);
+          await prefs.setString(
+              'pluggy_client_secret_enc',
+              remoteSettings['pluggy_client_secret_enc'] as String? ?? '');
+          await prefs.setString(
+              'pluggy_item_id',
+              remoteSettings['pluggy_item_id'] as String? ?? '');
+          await prefs.setBool(
+              'pluggy_enabled',
+              remoteSettings['pluggy_enabled'] as bool? ?? false);
+        }
+      }
+
       await _mergeAccounts(remote['accounts'] as List);
       await _mergeCategories(remote['categories'] as List);
       await _mergeTransactions(remote['transactions'] as List);
@@ -169,6 +205,24 @@ class MergeService {
                 deletedAt: Value(raw['deletedAt'] as int?),
               ),
             );
+      }
+      // Sobrescreve as configurações do Pluggy
+      final remoteSettings =
+          remote['settings'] as Map<String, dynamic>?;
+      if (remoteSettings != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            'pluggy_client_id',
+            remoteSettings['pluggy_client_id'] as String? ?? '');
+        await prefs.setString(
+            'pluggy_client_secret_enc',
+            remoteSettings['pluggy_client_secret_enc'] as String? ?? '');
+        await prefs.setString(
+            'pluggy_item_id',
+            remoteSettings['pluggy_item_id'] as String? ?? '');
+        await prefs.setBool(
+            'pluggy_enabled',
+            remoteSettings['pluggy_enabled'] as bool? ?? false);
       }
     });
   }

@@ -11,6 +11,7 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/pluggy/providers/pluggy_provider.dart';
 import '../../features/pluggy/screens/pluggy_import_screen.dart';
 import 'alberto_widgets.dart';
+import 'splash_screen.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -21,7 +22,8 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _selectedIndex = 0;
-  bool _pluggyChecked = false;
+  bool _isReady = false;
+  List<Map<String, dynamic>> _pendingPluggyTxs = [];
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: LucideIcons.layoutDashboard, label: 'Dashboard'),
@@ -39,55 +41,60 @@ class _AppShellState extends ConsumerState<AppShell> {
     SettingsScreen(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPluggy());
-  }
-
-  Future<void> _checkPluggy() async {
-    if (_pluggyChecked) return;
-    _pluggyChecked = true;
-
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-
+  Future<void> _initialize() async {
     try {
       final notifier = ref.read(pluggyConfigProvider.notifier);
-
       final txs = await notifier.fetchNewTransactions();
-
-      if (txs.isEmpty || !mounted) return;
-
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PluggyImportScreen(transactions: txs),
-          fullscreenDialog: true,
-        ),
-      );
+      _pendingPluggyTxs = txs;
     } catch (e) {
-      debugPrint('[Pluggy] Erro na verificação inicial: $e');
+      debugPrint('[AppShell] Erro no initialize: $e');
+    }
+  }
+
+  void _onSplashDone() {
+    setState(() => _isReady = true);
+
+    if (_pendingPluggyTxs.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                PluggyImportScreen(transactions: _pendingPluggyTxs),
+            fullscreenDialog: true,
+          ),
+        );
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 600;
-
-    if (isDesktop) {
-      return _DesktopLayout(
-        navItems: _navItems,
-        screens: _screens,
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+    if (_isReady) {
+      return SplashScreen(
+        onReady: _initialize,
       );
     }
 
-    return _MobileLayout(
-      navItems: _navItems,
-      screens: _screens,
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+    final isDesktop = MediaQuery.of(context).size.width >= 600;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: isDesktop
+          ? _DesktopLayout(
+              navItems: _navItems,
+              screens: _screens,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) =>
+                  setState(() => _selectedIndex = i),
+            )
+          : _MobileLayout(
+              navItems: _navItems,
+              screens: _screens,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) =>
+                  setState(() => _selectedIndex = i),
+            ),
     );
   }
 }
@@ -188,19 +195,39 @@ class _MobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: screens[selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: onDestinationSelected,
-        destinations: navItems
-            .map(
-              (item) => NavigationDestination(
-                icon: Icon(item.icon),
-                label: item.label,
-              ),
-            )
-            .toList(),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return TextStyle(
+              fontSize: 10,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected
+                  ? scheme.primary
+                  : (isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondaryLight),
+              overflow: TextOverflow.ellipsis,
+            );
+          }),
+        ),
+        child: NavigationBar(
+          selectedIndex: selectedIndex,
+          onDestinationSelected: onDestinationSelected,
+          destinations: navItems
+              .map(
+                (item) => NavigationDestination(
+                  icon: Icon(item.icon),
+                  label: item.label,
+                ),
+              )
+              .toList(),
+        ),
       ),
     );
   }

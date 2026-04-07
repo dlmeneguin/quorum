@@ -15,6 +15,7 @@ import '../widgets/upcoming_recurrences_widget.dart';
 import '../widgets/wealth_distribution_chart.dart';
 import '../../accounts/screens/account_detail_screen.dart';
 import '../../../shared/widgets/alberto_widgets.dart';
+import '../../../shared/widgets/fade_in_widget.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -168,96 +169,99 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Cards de resumo do mês (delay 100ms) ──
           SliverToBoxAdapter(
             child: summaryAsync.when(
-              data: (summary) => Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: Column(
-                  children: [
-                    // Resultado do mês
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: summary.balance >= 0
-                            ? AppColors.success.withOpacity(0.08)
-                            : AppColors.danger.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+              data: (summary) => FadeInWidget(
+                delay: const Duration(milliseconds: 100),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Column(
+                    children: [
+                      // Resultado do mês
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
                           color: summary.balance >= 0
-                              ? AppColors.success.withOpacity(0.3)
-                              : AppColors.danger.withOpacity(0.3),
+                              ? AppColors.success.withOpacity(0.08)
+                              : AppColors.danger.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: summary.balance >= 0
+                                ? AppColors.success.withOpacity(0.3)
+                                : AppColors.danger.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: summary.balance >= 0
+                                    ? AppColors.success.withOpacity(0.15)
+                                    : AppColors.danger.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                summary.balance >= 0
+                                    ? Icons.trending_up
+                                    : Icons.trending_down,
+                                color: summary.balance >= 0
+                                    ? AppColors.success
+                                    : AppColors.danger,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Resultado do mês',
+                                  style: AppTextStyles.label(textSecondary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  CurrencyUtils.formatSigned(summary.balance),
+                                  style: AppTextStyles.splineSans(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: summary.balance >= 0
+                                        ? AppColors.success
+                                        : AppColors.danger,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
+                      Row(
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: summary.balance >= 0
-                                  ? AppColors.success.withOpacity(0.15)
-                                  : AppColors.danger.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              summary.balance >= 0
-                                  ? Icons.trending_up
-                                  : Icons.trending_down,
-                              color: summary.balance >= 0
-                                  ? AppColors.success
-                                  : AppColors.danger,
-                              size: 20,
+                          Expanded(
+                            child: SummaryCard(
+                              label: 'Receitas',
+                              value: summary.income,
+                              icon: Icons.arrow_downward_rounded,
+                              color: AppColors.success,
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Resultado do mês',
-                                style: AppTextStyles.label(textSecondary),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                CurrencyUtils.formatSigned(
-                                    summary.balance),
-                                style: AppTextStyles.splineSans(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: summary.balance >= 0
-                                      ? AppColors.success
-                                      : AppColors.danger,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SummaryCard(
+                              label: 'Despesas',
+                              value: summary.expense,
+                              icon: Icons.arrow_upward_rounded,
+                              color: AppColors.danger,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SummaryCard(
-                            label: 'Receitas',
-                            value: summary.income,
-                            icon: Icons.arrow_downward_rounded,
-                            color: AppColors.success,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SummaryCard(
-                            label: 'Despesas',
-                            value: summary.expense,
-                            icon: Icons.arrow_upward_rounded,
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               loading: () => const Padding(
@@ -271,39 +275,47 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Donut chart: distribuição do patrimônio ──
+          // ── Donut chart: distribuição do patrimônio (delay 200ms) ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               child: ref.watch(wealthDistributionProvider).when(
                 data: (slices) => slices.isEmpty
                     ? const SizedBox.shrink()
-                    : WealthDistributionChart(slices: slices),
+                    : FadeInWidget(
+                        delay: const Duration(milliseconds: 200),
+                        child: WealthDistributionChart(slices: slices),
+                      ),
                 loading: () => _loadingCard(surfaceColor, borderColor),
                 error: (_, __) => const SizedBox.shrink(),
               ),
             ),
           ),
 
-          // ── Line chart: evolução do patrimônio ──
+          // ── Line chart: evolução do patrimônio (delay 300ms) ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: balanceHistoryAsync.when(
-                data: (history) => BalanceChart(data: history),
+                data: (history) => FadeInWidget(
+                  delay: const Duration(milliseconds: 300),
+                  child: BalanceChart(data: history),
+                ),
                 loading: () => _loadingCard(surfaceColor, borderColor),
                 error: (_, __) => const SizedBox.shrink(),
               ),
             ),
           ),
 
-          // ── Donut chart: gastos por categoria ──
+          // ── Donut chart: gastos por categoria (delay 400ms) ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               child: expensesAsync.when(
-                data: (expenses) =>
-                    ExpensesChart(expenses: expenses),
+                data: (expenses) => FadeInWidget(
+                  delay: const Duration(milliseconds: 400),
+                  child: ExpensesChart(expenses: expenses),
+                ),
                 loading: () => _loadingCard(surfaceColor, borderColor),
                 error: (_, __) => const SizedBox.shrink(),
               ),
@@ -315,9 +327,12 @@ class DashboardScreen extends ConsumerWidget {
             child: upcomingAsync.when(
               data: (upcoming) {
                 if (upcoming.isEmpty) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                  child: UpcomingRecurrencesWidget(data: upcoming),
+                return FadeInWidget(
+                  delay: const Duration(milliseconds: 400),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: UpcomingRecurrencesWidget(data: upcoming),
+                  ),
                 );
               },
               loading: () => const SizedBox.shrink(),
