@@ -223,7 +223,12 @@ class AppDatabase extends _$AppDatabase {
 
     for (final category in defaults) {
       await into(categories).insert(category);
+      }
     }
+
+  // Chamado após reset de fábrica para reinserir as categorias padrão.
+  Future<void> resetToDefaults() async {
+    await _insertDefaultCategories();
   }
 }
 

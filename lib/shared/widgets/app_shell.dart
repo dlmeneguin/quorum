@@ -201,36 +201,39 @@ class _MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  
     return Scaffold(
       body: screens[selectedIndex],
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            final selected = states.contains(WidgetState.selected);
-            return TextStyle(
-              fontSize: 10,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected
-                  ? scheme.primary
-                  : (isDark
-                      ? AppColors.textSecondaryDark
-                      : AppColors.textSecondaryLight),
-              overflow: TextOverflow.ellipsis,
-            );
-          }),
-        ),
-        child: NavigationBar(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onDestinationSelected,
-          destinations: navItems
-              .map(
-                (item) => NavigationDestination(
-                  icon: Icon(item.icon),
-                  label: item.label,
-                ),
-              )
-              .toList(),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              final selected = states.contains(WidgetState.selected);
+              return TextStyle(
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected
+                    ? scheme.primary
+                    : (isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight),
+                overflow: TextOverflow.ellipsis,
+              );
+            }),
+          ),
+          child: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: onDestinationSelected,
+            destinations: navItems
+                .map(
+                  (item) => NavigationDestination(
+                    icon: Icon(item.icon),
+                    label: item.label,
+                  ),
+                )
+                .toList(),
+          ),
         ),
       ),
     );

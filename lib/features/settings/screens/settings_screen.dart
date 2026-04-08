@@ -11,6 +11,7 @@ import '../providers/theme_provider.dart';
 import '../../pluggy/providers/pluggy_provider.dart';
 import '../../pluggy/screens/pluggy_test_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
+import 'factory_reset_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -149,6 +150,22 @@ class SettingsScreen extends ConsumerWidget {
                         );
                       }
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsItem(
+                    icon: Icons.delete_forever_outlined,
+                    label: 'Apagar todos os dados',
+                    subtitle: 'Restaurar o aplicativo ao estado inicial',
+                    color: AppColors.danger,
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const FactoryResetScreen(),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 40),
                 ],
