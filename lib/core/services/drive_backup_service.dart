@@ -4,23 +4,24 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'google_auth_service.dart';
 
 class DriveBackupService {
-  static const _fileName        = 'quorum_sync.json';
-  static const _resetFileName   = 'quorum_reset_signal.json';
-  static const _mimeType        = 'application/json';
-  static const _spaces          = 'appDataFolder';
+  static const _fileName      = 'quorum_sync.json';
+  static const _resetFileName = 'quorum_reset_signal.json';
+  static const _mimeType      = 'application/json';
+  static const _spaces        = 'appDataFolder';
+
+  // Tempo que o sinal de reset permanece no Drive.
+  // Suficiente para todos os dispositivos verem, mesmo os inativos por dias.
+  static const _resetSignalTtl = Duration(days: 30);
 
   // ── Upload / Download principal ───────────────────────────────────────────
 
   static Future<bool> upload(String jsonContent) async {
     try {
       final api = await GoogleAuthService.getDriveApi();
-      if (api == null) {
-        debugPrint('[Drive] upload: getDriveApi retornou null.');
-        return false;
-      }
+      if (api == null) return false;
 
-      final encoded     = utf8.encode(jsonContent);
-      final existingId  = await _getFileId(api, _fileName);
+      final encoded    = utf8.encode(jsonContent);
+      final existingId = await _getFileId(api, _fileName);
 
       final media = drive.Media(
         Stream.value(encoded),
@@ -29,10 +30,8 @@ class DriveBackupService {
       );
 
       if (existingId != null) {
-        debugPrint('[Drive] Atualizando arquivo existente: $existingId');
         await api.files.update(drive.File(), existingId, uploadMedia: media);
       } else {
-        debugPrint('[Drive] Criando novo arquivo no Drive.');
         final file = drive.File()
           ..name    = _fileName
           ..parents = [_spaces];
@@ -50,18 +49,11 @@ class DriveBackupService {
   static Future<String?> download() async {
     try {
       final api = await GoogleAuthService.getDriveApi();
-      if (api == null) {
-        debugPrint('[Drive] download: getDriveApi retornou null.');
-        return null;
-      }
+      if (api == null) return null;
 
       final fileId = await _getFileId(api, _fileName);
-      if (fileId == null) {
-        debugPrint('[Drive] download: arquivo não encontrado.');
-        return null;
-      }
+      if (fileId == null) return null;
 
-      debugPrint('[Drive] Baixando arquivo: $fileId');
       final response = await api.files.get(
         fileId,
         downloadOptions: drive.DownloadOptions.fullMedia,
@@ -69,7 +61,6 @@ class DriveBackupService {
 
       final bytes   = await response.stream.toList();
       final content = bytes.expand((b) => b).toList();
-      debugPrint('[Drive] Download concluído (${content.length} bytes).');
       return utf8.decode(content);
     } catch (e, st) {
       debugPrint('[Drive] Erro em download: $e\n$st');
@@ -99,21 +90,45 @@ class DriveBackupService {
 
   // ── Reset signal ──────────────────────────────────────────────────────────
 
-  /// Retorna true se existe um arquivo de sinal de reset no Drive.
-  static Future<bool> hasResetSignal() async {
+  /// Retorna o timestamp do reset se existir um sinal válido (dentro do TTL),
+  /// ou null se não houver sinal ou se ele já expirou.
+  static Future<DateTime?> getResetSignalTime() async {
     try {
       final api = await GoogleAuthService.getDriveApi();
-      if (api == null) return false;
-      final id = await _getFileId(api, _resetFileName);
-      return id != null;
+      if (api == null) return null;
+
+      final fileId = await _getFileId(api, _resetFileName);
+      if (fileId == null) return null;
+
+      final response = await api.files.get(
+        fileId,
+        downloadOptions: drive.DownloadOptions.fullMedia,
+      ) as drive.Media;
+
+      final bytes   = await response.stream.toList();
+      final content = utf8.decode(bytes.expand((b) => b).toList());
+      final data    = jsonDecode(content) as Map<String, dynamic>;
+
+      final resetAtStr = data['resetAt'] as String?;
+      if (resetAtStr == null) return null;
+
+      final resetAt = DateTime.parse(resetAtStr);
+
+      // Se o sinal expirou (TTL), ignora — dispositivo ficou inativo demais
+      if (DateTime.now().difference(resetAt) > _resetSignalTtl) {
+        debugPrint('[Drive] Sinal de reset expirado (>30 dias), ignorando.');
+        return null;
+      }
+
+      return resetAt;
     } catch (e) {
-      debugPrint('[Drive] Erro em hasResetSignal: $e');
-      return false;
+      debugPrint('[Drive] Erro em getResetSignalTime: $e');
+      return null;
     }
   }
 
-  /// Apaga o arquivo de sync principal e cria o sinal de reset.
-  /// Chamado quando o usuário quer apagar os dados de sync de todos os dispositivos.
+  /// Apaga o arquivo de sync principal e grava o sinal de reset com timestamp.
+  /// O sinal NÃO é apagado por quem o processa — fica no Drive pelo TTL.
   static Future<void> deleteAllAndSignalReset() async {
     try {
       final api = await GoogleAuthService.getDriveApi();
@@ -126,46 +141,33 @@ class DriveBackupService {
         debugPrint('[Drive] Arquivo de sync apagado.');
       }
 
-      // Cria o sinal de reset
-      final resetContent = utf8.encode(
-        jsonEncode({'resetAt': DateTime.now().toIso8601String()}),
-      );
-      final media = drive.Media(
-        Stream.value(resetContent),
-        resetContent.length,
-        contentType: _mimeType,
-      );
+      // Grava (ou sobrescreve) o sinal de reset com o timestamp atual
+      await _writeResetSignal(api);
 
-      // Verifica se já existe sinal anterior e sobrescreve
-      final existingResetId = await _getFileId(api, _resetFileName);
-      if (existingResetId != null) {
-        await api.files.update(drive.File(), existingResetId, uploadMedia: media);
-      } else {
-        final file = drive.File()
-          ..name    = _resetFileName
-          ..parents = [_spaces];
-        await api.files.create(file, uploadMedia: media);
-      }
-
-      debugPrint('[Drive] Sinal de reset criado.');
+      debugPrint('[Drive] Sinal de reset gravado com timestamp.');
     } catch (e, st) {
       debugPrint('[Drive] Erro em deleteAllAndSignalReset: $e\n$st');
     }
   }
 
-  /// Apaga apenas o arquivo de sinal de reset.
-  /// Chamado após um dispositivo processar o reset.
-  static Future<void> deleteResetSignal() async {
-    try {
-      final api = await GoogleAuthService.getDriveApi();
-      if (api == null) return;
-      final id = await _getFileId(api, _resetFileName);
-      if (id != null) {
-        await api.files.delete(id);
-        debugPrint('[Drive] Sinal de reset apagado do Drive.');
-      }
-    } catch (e, st) {
-      debugPrint('[Drive] Erro em deleteResetSignal: $e\n$st');
+  static Future<void> _writeResetSignal(drive.DriveApi api) async {
+    final content = utf8.encode(
+      jsonEncode({'resetAt': DateTime.now().toUtc().toIso8601String()}),
+    );
+    final media = drive.Media(
+      Stream.value(content),
+      content.length,
+      contentType: _mimeType,
+    );
+
+    final existingId = await _getFileId(api, _resetFileName);
+    if (existingId != null) {
+      await api.files.update(drive.File(), existingId, uploadMedia: media);
+    } else {
+      final file = drive.File()
+        ..name    = _resetFileName
+        ..parents = [_spaces];
+      await api.files.create(file, uploadMedia: media);
     }
   }
 
@@ -178,9 +180,7 @@ class DriveBackupService {
         q: "name = '$fileName'",
         $fields: 'files(id)',
       );
-      final id = list.files?.firstOrNull?.id;
-      debugPrint('[Drive] _getFileId($fileName): $id');
-      return id;
+      return list.files?.firstOrNull?.id;
     } catch (e, st) {
       debugPrint('[Drive] Erro em _getFileId($fileName): $e\n$st');
       return null;
