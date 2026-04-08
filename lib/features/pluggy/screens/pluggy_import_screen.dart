@@ -129,11 +129,11 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
-
+  
     final accountsAsync = ref.watch(accountsProvider);
     final expenseCatsAsync = ref.watch(expenseCategoriesProvider);
     final incomeCatsAsync = ref.watch(incomeCategoriesProvider);
-
+  
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -155,85 +155,98 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
         ],
       ),
       body: accountsAsync.when(
-        data: (accounts) => expenseCatsAsync.when(
-          data: (expenseCats) => incomeCatsAsync.when(
-            data: (incomeCats) {
-              if (_rows.isEmpty) {
-                // Todos descartados inline
-                WidgetsBinding.instance.addPostFrameCallback((_) async {
-                  await _skipAll();
-                });
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      itemCount: _rows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final row = _rows[index];
-                        final pluggyType = row.raw['type'] as String? ?? 'DEBIT';
-                        final isCredit = pluggyType == 'CREDIT';
-                        final cats = isCredit ? incomeCats : expenseCats;
-
-                        return _TxCard(
-                          row: row,
-                          accounts: accounts,
-                          categories: cats,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
-                          textSecondary: textSecondary,
-                          onChanged: () => setState(() {}),
-                          onDiscard: () => setState(() => _rows.removeAt(index)),
-                        );
-                      },
+        data: (accounts) {
+          // Auto-seleciona a conta se houver apenas uma
+          if (accounts.length == 1) {
+            for (final row in _rows) {
+              row.selectedAccountId ??= accounts.first.id;
+            }
+          }
+  
+          return expenseCatsAsync.when(
+            data: (expenseCats) => incomeCatsAsync.when(
+              data: (incomeCats) {
+                if (_rows.isEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    await _skipAll();
+                  });
+                  return const Center(child: CircularProgressIndicator());
+                }
+  
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        itemCount: _rows.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final row = _rows[index];
+                          final pluggyType =
+                              row.raw['type'] as String? ?? 'DEBIT';
+                          final isCredit = pluggyType == 'CREDIT';
+                          final cats = isCredit ? incomeCats : expenseCats;
+  
+                          return _TxCard(
+                            row: row,
+                            accounts: accounts,
+                            categories: cats,
+                            isDark: isDark,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                            onChanged: () => setState(() {}),
+                            onDiscard: () =>
+                                setState(() => _rows.removeAt(index)),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-
-                  // Botão salvar
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: FilledButton(
-                          onPressed: (_allValid && !_saving) ? _save : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+  
+                    // Botão salvar
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton(
+                            onPressed: (_allValid && !_saving) ? _save : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          ),
-                          child: _saving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                            child: _saving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Salvar ${_rows.length} transaç${_rows.length == 1 ? 'ão' : 'ões'}',
+                                    style:
+                                        AppTextStyles.bodyBold(Colors.white),
                                   ),
-                                )
-                              : Text(
-                                  'Salvar ${_rows.length} transaç${_rows.length == 1 ? 'ão' : 'ões'}',
-                                  style: AppTextStyles.bodyBold(Colors.white),
-                                ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Erro: $e')),
+            ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Erro: $e')),
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Erro: $e')),
-        ),
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erro: $e')),
       ),

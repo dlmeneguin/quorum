@@ -10,6 +10,7 @@ import '../../../core/services/sync_service_provider.dart';
 import '../providers/theme_provider.dart';
 import '../../pluggy/providers/pluggy_provider.dart';
 import '../../pluggy/screens/pluggy_test_screen.dart';
+import '../../accounts/providers/accounts_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -284,111 +285,133 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
   @override
   Widget build(BuildContext context) {
     final configAsync = ref.watch(pluggyConfigProvider);
+    final accountsAsync = ref.watch(accountsProvider);
 
     return configAsync.when(
-      data: (config) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: widget.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.borderColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cabeçalho + switch
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+      data: (config) {
+        final accounts = accountsAsync.valueOrNull ?? [];
+        final hasAccounts = accounts.isNotEmpty;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: widget.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: widget.borderColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cabeçalho + switch
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.account_balance_rounded,
+                        color: Color(0xFF6366F1), size: 20),
                   ),
-                  child: const Icon(Icons.account_balance_rounded,
-                      color: Color(0xFF6366F1), size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Importação automática',
-                          style: AppTextStyles.bodyBold(widget.textPrimary)),
-                      Text(
-                        config.isConfigured
-                            ? 'Pluggy configurado'
-                            : 'Configure para ativar',
-                        style: AppTextStyles.label(widget.textSecondary),
-                      ),
-                    ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Importação automática',
+                            style:
+                                AppTextStyles.bodyBold(widget.textPrimary)),
+                        Text(
+                          !hasAccounts
+                              ? 'Crie uma conta para ativar'
+                              : config.isConfigured
+                                  ? 'Pluggy configurado'
+                                  : 'Configure para ativar',
+                          style:
+                              AppTextStyles.label(widget.textSecondary),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Switch(
-                  value: config.enabled && config.isConfigured,
-                  activeColor: AppColors.primary,
-                  onChanged: (value) async {
-                    final notifier =
-                        ref.read(pluggyConfigProvider.notifier);
-                    if (value) {
-                      if (!config.isConfigured) {
-                        await _openConfigDialog(turnOnAfter: true);
+                  Switch(
+                    value: config.enabled && config.isConfigured,
+                    activeColor: AppColors.primary,
+                    onChanged: (value) async {
+                      final notifier =
+                          ref.read(pluggyConfigProvider.notifier);
+
+                      if (value) {
+                        // Verifica se há ao menos uma conta criada
+                        if (!hasAccounts) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Crie uma conta antes de ativar a importação automática',
+                              ),
+                              backgroundColor: AppColors.danger,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (!config.isConfigured) {
+                          await _openConfigDialog(turnOnAfter: true);
+                        } else {
+                          await notifier.setEnabled(true);
+                          ref.read(syncServiceProvider).scheduleUpload();
+                        }
                       } else {
-                        await notifier.setEnabled(true);
-                        // Sobe o novo estado para o Drive
+                        await notifier.setEnabled(false);
                         ref.read(syncServiceProvider).scheduleUpload();
                       }
-                    } else {
-                      await notifier.setEnabled(false);
-                      // Sobe o novo estado para o Drive
-                      ref.read(syncServiceProvider).scheduleUpload();
-                    }
-                  },
-                ),
-              ],
-            ),
-
-            // Botão de editar credenciais
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _openConfigDialog(turnOnAfter: false),
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                label: Text(
-                  config.isConfigured
-                      ? 'Editar credenciais'
-                      : 'Configurar credenciais',
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
+                    },
+                  ),
+                ],
               ),
-            ),
-            // Botão de teste (debug)
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const PluggyTestScreen(),
+
+              // Botão de editar credenciais
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openConfigDialog(turnOnAfter: false),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: Text(
+                    config.isConfigured
+                        ? 'Editar credenciais'
+                        : 'Configurar credenciais',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
-                icon: const Icon(Icons.bug_report_outlined, size: 16,
-                    color: Color(0xFF6366F1)),
-                label: const Text('Tela de testes (debug)',
-                    style: TextStyle(color: Color(0xFF6366F1))),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  side: const BorderSide(color: Color(0xFF6366F1)),
+              ),
+              // Botão de teste (debug)
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PluggyTestScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bug_report_outlined,
+                      size: 16, color: Color(0xFF6366F1)),
+                  label: const Text('Tela de testes (debug)',
+                      style: TextStyle(color: Color(0xFF6366F1))),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: const BorderSide(color: Color(0xFF6366F1)),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => const SizedBox.shrink(),
     );

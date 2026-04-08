@@ -64,27 +64,32 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startSequence() async {
+    final startTime = DateTime.now();
+  
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
     _logoController.forward();
-
+  
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     _dotsController.repeat(reverse: true);
-
+  
     // Aguarda o trabalho externo (verificação do Pluggy, etc.)
     await widget.onReady();
-
-    // Pausa mínima para o usuário ver o splash
-    await Future.delayed(const Duration(milliseconds: 300));
-
+  
+    // Garante tempo mínimo de 1,5s desde o início do sequence
+    final elapsed = DateTime.now().difference(startTime);
+    const minDuration = Duration(milliseconds: 2500);
+    if (elapsed < minDuration) {
+      await Future.delayed(minDuration - elapsed);
+    }
+  
     if (!mounted) return;
     _dotsController.stop();
-
+  
     // Avisa o pai que pode sair do splash
     widget.onDone();
   }
-
   @override
   void dispose() {
     _logoController.dispose();
@@ -130,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Finanças pessoais',
+                      'Ao menos você deve conhecer suas finanças',
                       style: AppTextStyles.label(
                           Colors.white.withOpacity(0.7)),
                     ),
