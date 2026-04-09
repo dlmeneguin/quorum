@@ -26,7 +26,7 @@ class App extends ConsumerWidget {
     };
 
     return MaterialApp(
-      title: 'Quorum',
+      title: 'Quórum',
       debugShowCheckedModeBanner: false,
       theme: isSnoopy ? AppTheme.snoopy : AppTheme.light,
       darkTheme: isSnoopy ? AppTheme.snoopy : AppTheme.dark,
