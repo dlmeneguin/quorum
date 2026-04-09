@@ -58,6 +58,14 @@ dev_dependencies:
   drift_dev: ^2.22.0
   build_runner: ^2.4.13
   flutter_launcher_icons: ^0.14.3
+  msix: ^3.16.8
+
+msix_config:
+  display_name: Quórum
+  publisher_display_name: dlmeneguin
+  identity_name: com.dlmeneguin.quorum
+  logo_path: assets/images/icon.png
+  capabilities: internetClient
 
 flutter_icons:
   android: true
