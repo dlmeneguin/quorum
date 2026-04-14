@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/utils/currency.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/fuzzy_search.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../dashboard/widgets/expenses_chart.dart';
@@ -12,14 +13,58 @@ import '../../transactions/screens/transaction_form_screen.dart';
 import '../providers/accounts_provider.dart';
 import '../providers/account_detail_provider.dart';
 import '../widgets/account_type_badge.dart';
+import '../../settings/providers/categories_provider.dart';
 
-class AccountDetailScreen extends ConsumerWidget {
+class AccountDetailScreen extends ConsumerStatefulWidget {
   final Account account;
 
   const AccountDetailScreen({super.key, required this.account});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountDetailScreen> createState() =>
+      _AccountDetailScreenState();
+}
+
+class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
+  bool _searchActive = false;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _filterCategoryId;
+  String? _filterPaymentMethod;
+
+  final _paymentMethods = [
+    'Débito', 'Crédito', 'Pix', 'Dinheiro', 'TED/DOC', 'Boleto',
+  ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasActiveFilters =>
+      _filterCategoryId != null || _filterPaymentMethod != null;
+
+  List<Transaction> _applyFilters(List<Transaction> transactions) {
+    return transactions.where((t) {
+      if (_filterCategoryId != null && t.categoryId != _filterCategoryId) {
+        return false;
+      }
+      if (_filterPaymentMethod != null &&
+          t.paymentMethod != _filterPaymentMethod) {
+        return false;
+      }
+      if (_searchQuery.isNotEmpty) {
+        final searchTarget =
+            '${t.description ?? ''} ${t.paymentMethod ?? ''}';
+        if (!FuzzySearch.matches(_searchQuery, searchTarget)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
@@ -30,29 +75,51 @@ class AccountDetailScreen extends ConsumerWidget {
     final borderColor =
         isDark ? AppColors.borderDark : AppColors.borderLight;
 
-    final accountColor =
-        account.color != null ? Color(account.color!) : AppColors.primary;
+    final accountColor = widget.account.color != null
+        ? Color(widget.account.color!)
+        : AppColors.primary;
 
-    final balanceAsync = ref.watch(accountBalanceProvider(account));
-    final summaryAsync = ref.watch(accountMonthSummaryProvider(account));
+    final balanceAsync = ref.watch(accountBalanceProvider(widget.account));
+    final summaryAsync =
+        ref.watch(accountMonthSummaryProvider(widget.account));
     final expensesAsync =
-        ref.watch(accountExpensesByCategoryProvider(account));
+        ref.watch(accountExpensesByCategoryProvider(widget.account));
     final historyAsync =
-        ref.watch(accountBalanceHistoryProvider(account));
+        ref.watch(accountBalanceHistoryProvider(widget.account));
     final transactionsAsync =
-        ref.watch(accountTransactionsProvider(account));
-    final goalsAsync = ref.watch(accountGoalsProvider(account));
+        ref.watch(accountTransactionsProvider(widget.account));
+    final goalsAsync = ref.watch(accountGoalsProvider(widget.account));
     final selected = ref.watch(accountDetailMonthProvider);
+
+    final isSearching = _searchQuery.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          account.name,
-          style: AppTextStyles.sectionTitle(textPrimary),
-        ),
+        title: _searchActive
+            ? _SearchBar(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                onClose: () => setState(() {
+                  _searchActive = false;
+                  _searchQuery = '';
+                  _searchController.clear();
+                }),
+              )
+            : Text(
+                widget.account.name,
+                style: AppTextStyles.sectionTitle(textPrimary),
+              ),
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.transparent,
+        actions: [
+          if (!_searchActive)
+            IconButton(
+              onPressed: () => setState(() => _searchActive = true),
+              icon: Icon(Icons.search, color: textSecondary),
+              tooltip: 'Buscar transações',
+            ),
+        ],
       ),
       body: CustomScrollView(
         slivers: [
@@ -74,7 +141,7 @@ class AccountDetailScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      AccountTypeBadge(type: account.type),
+                      AccountTypeBadge(type: widget.account.type),
                       const Spacer(),
                       Container(
                         width: 36,
@@ -84,7 +151,7 @@ class AccountDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          _iconForType(account.type),
+                          _iconForType(widget.account.type),
                           color: Colors.white,
                           size: 18,
                         ),
@@ -92,32 +159,26 @@ class AccountDetailScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Saldo atual',
-                    style: AppTextStyles.label(
-                        Colors.white.withOpacity(0.8)),
-                  ),
+                  Text('Saldo atual',
+                      style: AppTextStyles.label(
+                          Colors.white.withOpacity(0.8))),
                   const SizedBox(height: 6),
                   balanceAsync.when(
                     data: (balance) => Text(
                       CurrencyUtils.format(balance),
-                      style:
-                          AppTextStyles.dashboardNumber(Colors.white),
+                      style: AppTextStyles.dashboardNumber(Colors.white),
                     ),
-                    loading: () => Text(
-                      '...',
-                      style: AppTextStyles.dashboardNumber(
-                          Colors.white.withOpacity(0.5)),
-                    ),
+                    loading: () => Text('...',
+                        style: AppTextStyles.dashboardNumber(
+                            Colors.white.withOpacity(0.5))),
                     error: (_, __) => const SizedBox.shrink(),
                   ),
-
                 ],
               ),
             ),
           ),
 
-          // ── Card: metas vinculadas a esta conta ──
+          // ── Metas vinculadas ──
           goalsAsync.when(
             data: (goals) {
               if (goals.isEmpty) {
@@ -136,11 +197,13 @@ class AccountDetailScreen extends ConsumerWidget {
                 ),
               );
             },
-            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            loading: () =>
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, __) =>
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
 
-          // ── Seletor de mês + resumo ──
+          // ── Resumo do mês ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -202,8 +265,7 @@ class AccountDetailScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Resultado do mês',
-                                  style:
-                                      AppTextStyles.label(textSecondary)),
+                                  style: AppTextStyles.label(textSecondary)),
                               const SizedBox(height: 2),
                               Text(
                                 CurrencyUtils.formatSigned(summary.balance),
@@ -260,7 +322,7 @@ class AccountDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Line chart: evolução do saldo ──
+          // ── Gráficos ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
@@ -275,7 +337,6 @@ class AccountDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Donut chart: gastos por categoria ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -288,18 +349,61 @@ class AccountDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Histórico de transações ──
+          // ── Título + filtros de transações ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-              child: Text('Transações do mês',
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Text('Transações',
                   style: AppTextStyles.sectionTitle(textPrimary)),
             ),
           ),
 
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: _AdvancedFilters(
+                selectedCategoryId: _filterCategoryId,
+                selectedPaymentMethod: _filterPaymentMethod,
+                paymentMethods: _paymentMethods,
+                hasActiveFilters: _hasActiveFilters,
+                isDark: isDark,
+                textSecondary: textSecondary,
+                onCategoryChanged: (v) =>
+                    setState(() => _filterCategoryId = v),
+                onPaymentChanged: (v) =>
+                    setState(() => _filterPaymentMethod = v),
+                onClear: () => setState(() {
+                  _filterCategoryId = null;
+                  _filterPaymentMethod = null;
+                }),
+              ),
+            ),
+          ),
+
+          if (isSearching)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Buscando em todas as transações desta conta',
+                      style: AppTextStyles.label(AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Lista de transações ──
           transactionsAsync.when(
             data: (transactions) {
-              if (transactions.isEmpty) {
+              final filtered = _applyFilters(transactions);
+
+              if (filtered.isEmpty) {
                 return SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
@@ -316,8 +420,12 @@ class AccountDetailScreen extends ConsumerWidget {
                             Icon(Icons.receipt_long_outlined,
                                 size: 40, color: textSecondary),
                             const SizedBox(height: 12),
-                            Text('Sem transações no período',
-                                style: AppTextStyles.body(textSecondary)),
+                            Text(
+                              isSearching || _hasActiveFilters
+                                  ? 'Nenhuma transação encontrada'
+                                  : 'Sem transações no período',
+                              style: AppTextStyles.body(textSecondary),
+                            ),
                           ],
                         ),
                       ),
@@ -326,7 +434,7 @@ class AccountDetailScreen extends ConsumerWidget {
                 );
               }
 
-              final grouped = _groupByDate(transactions);
+              final grouped = _groupByDate(filtered);
               final dates = grouped.keys.toList();
 
               return SliverPadding(
@@ -373,7 +481,8 @@ class AccountDetailScreen extends ConsumerWidget {
             loading: () => const SliverToBoxAdapter(
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (_, __) => const SliverToBoxAdapter(child: SizedBox()),
+            error: (_, __) =>
+                const SliverToBoxAdapter(child: SizedBox()),
           ),
         ],
       ),
@@ -412,7 +521,365 @@ class AccountDetailScreen extends ConsumerWidget {
       };
 }
 
-// ── Card de metas vinculadas ──
+// ── Barra de busca ──
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClose;
+
+  const _SearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            onChanged: onChanged,
+            style: AppTextStyles.body(
+              isDark
+                  ? AppColors.textPrimaryDark
+                  : AppColors.textPrimaryLight,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Buscar transações...',
+              hintStyle: AppTextStyles.body(
+                isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIconColor: AppColors.primary,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor:
+                  isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: onClose,
+          icon: const Icon(Icons.close),
+          color: isDark
+              ? AppColors.textSecondaryDark
+              : AppColors.textSecondaryLight,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Filtros avançados ──
+
+class _AdvancedFilters extends ConsumerWidget {
+  final String? selectedCategoryId;
+  final String? selectedPaymentMethod;
+  final List<String> paymentMethods;
+  final bool hasActiveFilters;
+  final bool isDark;
+  final Color textSecondary;
+  final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String?> onPaymentChanged;
+  final VoidCallback onClear;
+
+  const _AdvancedFilters({
+    required this.selectedCategoryId,
+    required this.selectedPaymentMethod,
+    required this.paymentMethods,
+    required this.hasActiveFilters,
+    required this.isDark,
+    required this.textSecondary,
+    required this.onCategoryChanged,
+    required this.onPaymentChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final surfaceColor =
+        isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor =
+        isDark ? AppColors.borderDark : AppColors.borderLight;
+
+    return categoriesAsync.when(
+      data: (categories) => Row(
+        children: [
+          Expanded(
+            child: _CompactDropdown<String>(
+              hint: 'Categoria',
+              value: selectedCategoryId,
+              isDark: isDark,
+              surfaceColor: surfaceColor,
+              borderColor: borderColor,
+              textSecondary: textSecondary,
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('Todas',
+                      style: AppTextStyles.label(textSecondary)),
+                ),
+                ...categories.map((c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: c.color != null
+                                  ? Color(c.color!)
+                                  : AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(c.name,
+                                style: AppTextStyles.label(
+                                  isDark
+                                      ? AppColors.textPrimaryDark
+                                      : AppColors.textPrimaryLight,
+                                ),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+              onChanged: onCategoryChanged,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _CompactDropdown<String>(
+              hint: 'Pagamento',
+              value: selectedPaymentMethod,
+              isDark: isDark,
+              surfaceColor: surfaceColor,
+              borderColor: borderColor,
+              textSecondary: textSecondary,
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('Todos',
+                      style: AppTextStyles.label(textSecondary)),
+                ),
+                ...paymentMethods.map((m) => DropdownMenuItem(
+                      value: m,
+                      child: Text(m,
+                          style: AppTextStyles.label(
+                            isDark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimaryLight,
+                          )),
+                    )),
+              ],
+              onChanged: onPaymentChanged,
+            ),
+          ),
+          if (hasActiveFilters) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: onClear,
+              icon:
+                  const Icon(Icons.filter_alt_off_outlined, size: 18),
+              color: AppColors.danger,
+              tooltip: 'Limpar filtros',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.danger.withOpacity(0.08),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _CompactDropdown<T> extends StatelessWidget {
+  final String hint;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final bool isDark;
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color textSecondary;
+
+  const _CompactDropdown({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    required this.isDark,
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: value != null
+            ? AppColors.primary.withOpacity(0.08)
+            : surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: value != null
+              ? AppColors.primary.withOpacity(0.4)
+              : borderColor,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          hint: Text(hint,
+              style:
+                  AppTextStyles.dmSans(fontSize: 12, color: textSecondary),
+              overflow: TextOverflow.ellipsis),
+          isExpanded: true,
+          isDense: true,
+          dropdownColor: surfaceColor,
+          style: AppTextStyles.dmSans(
+            fontSize: 12,
+            color: value != null
+                ? AppColors.primary
+                : (isDark
+                    ? AppColors.textPrimaryDark
+                    : AppColors.textPrimaryLight),
+            fontWeight:
+                value != null ? FontWeight.w600 : FontWeight.w400,
+          ),
+          items: items,
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tile de transação ──
+
+class _TransactionTile extends StatelessWidget {
+  final Transaction transaction;
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textSecondary;
+  final VoidCallback onTap;
+
+  const _TransactionTile({
+    required this.transaction,
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isIncome = transaction.type == 'income';
+    final isTransfer = transaction.type == 'transfer';
+    final isTransferIn = isTransfer && (transaction.isTransferOut == false);
+    final color = isTransfer
+        ? AppColors.accent
+        : isIncome
+            ? AppColors.success
+            : AppColors.danger;
+    final isPositive = isIncome || isTransferIn;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isTransfer
+                    ? (isTransferIn
+                        ? Icons.arrow_downward_rounded
+                        : Icons.arrow_upward_rounded)
+                    : isIncome
+                        ? Icons.arrow_downward_rounded
+                        : Icons.arrow_upward_rounded,
+                color: color,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction.description ?? _defaultLabel(),
+                    style: AppTextStyles.bodyBold(textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (transaction.paymentMethod != null)
+                    Text(
+                      transaction.paymentMethod!,
+                      style: AppTextStyles.label(textSecondary),
+                    ),
+                ],
+              ),
+            ),
+            Text(
+              '${isPositive ? '+' : '-'} ${CurrencyUtils.format(transaction.amount)}',
+              style: AppTextStyles.bodyBold(
+                  isPositive ? AppColors.success : AppColors.danger),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _defaultLabel() => switch (transaction.type) {
+        'income' => 'Receita',
+        'expense' => 'Despesa',
+        'transfer' => 'Transferência',
+        _ => 'Transação',
+      };
+}
+
+// ── Widgets internos reutilizados do original ──
 
 class _LinkedGoalsCard extends StatelessWidget {
   final List<Goal> goals;
@@ -454,7 +921,6 @@ class _LinkedGoalsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Título + total alocado
           Row(
             children: [
               Container(
@@ -492,8 +958,6 @@ class _LinkedGoalsCard extends StatelessWidget {
           const SizedBox(height: 14),
           const Divider(height: 1),
           const SizedBox(height: 12),
-
-          // Lista de metas
           ...goals.map((goal) {
             final goalColor =
                 goal.color != null ? Color(goal.color!) : AppColors.accent;
@@ -556,8 +1020,7 @@ class _LinkedGoalsCard extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: percentage,
                             minHeight: 5,
-                            backgroundColor:
-                                goalColor.withOpacity(0.12),
+                            backgroundColor: goalColor.withOpacity(0.12),
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(goalColor),
                           ),
@@ -579,8 +1042,6 @@ class _LinkedGoalsCard extends StatelessWidget {
     );
   }
 }
-
-// ── Widgets internos ──
 
 class _MonthSelector extends StatelessWidget {
   final DateTime selected;
@@ -727,103 +1188,4 @@ class _LoadingCard extends StatelessWidget {
       child: const Center(child: CircularProgressIndicator()),
     );
   }
-}
-
-class _TransactionTile extends StatelessWidget {
-  final Transaction transaction;
-  final Color surfaceColor;
-  final Color borderColor;
-  final Color textPrimary;
-  final Color textSecondary;
-  final VoidCallback onTap;
-
-  const _TransactionTile({
-    required this.transaction,
-    required this.surfaceColor,
-    required this.borderColor,
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isIncome = transaction.type == 'income';
-    final isTransfer = transaction.type == 'transfer';
-    final isTransferIn = isTransfer && (transaction.isTransferOut == false);
-    final color = isTransfer
-        ? AppColors.accent
-        : isIncome
-            ? AppColors.success
-            : AppColors.danger;
-    final isPositive = isIncome || isTransferIn;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isTransfer
-                    ? (isTransferIn
-                        ? Icons.arrow_downward_rounded
-                        : Icons.arrow_upward_rounded)
-                    : isIncome
-                        ? Icons.arrow_downward_rounded
-                        : Icons.arrow_upward_rounded,
-                color: color,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    transaction.description ?? _defaultLabel(),
-                    style: AppTextStyles.bodyBold(textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (transaction.paymentMethod != null)
-                    Text(
-                      transaction.paymentMethod!,
-                      style: AppTextStyles.label(textSecondary),
-                    ),
-                ],
-              ),
-            ),
-            Text(
-              '${isPositive ? '+' : '-'} ${CurrencyUtils.format(transaction.amount)}',
-              style: AppTextStyles.bodyBold(
-                  isPositive ? AppColors.success : AppColors.danger),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _defaultLabel() => switch (transaction.type) {
-        'income' => 'Receita',
-        'expense' => 'Despesa',
-        'transfer' => 'Transferência',
-        _ => 'Transação',
-      };
 }

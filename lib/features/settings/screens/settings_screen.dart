@@ -199,6 +199,157 @@ class _PluggySection extends ConsumerStatefulWidget {
 
 class _PluggySectionState extends ConsumerState<_PluggySection> {
   Future<void> _openConfigDialog({required bool turnOnAfter}) async {
+    // Primeiro mostra o popup de instruções
+    final goToConfig = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final tp = isDark
+            ? AppColors.textPrimaryDark
+            : AppColors.textPrimaryLight;
+        final ts = isDark
+            ? AppColors.textSecondaryDark
+            : AppColors.textSecondaryLight;
+        final surf = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+        final bord = isDark ? AppColors.borderDark : AppColors.borderLight;
+
+        return AlertDialog(
+          title: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.account_balance_rounded,
+                    color: Color(0xFF6366F1), size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text('Como configurar o Pluggy',
+                  style: AppTextStyles.sectionTitle(tp)),
+            ],
+          ),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InstructionStep(
+                    step: '1',
+                    title: 'Conecte seu banco',
+                    description:
+                        'Acesse meu.pluggy.ai e faça login. Clique em "Adicionar conta" e siga o fluxo para conectar sua instituição financeira.',
+                    icon: Icons.account_balance_outlined,
+                    isDark: isDark,
+                    tp: tp,
+                    ts: ts,
+                    surf: surf,
+                    bord: bord,
+                  ),
+                  const SizedBox(height: 10),
+                  _InstructionStep(
+                    step: '2',
+                    title: 'Crie uma Application',
+                    description:
+                        'Acesse dashboard.pluggy.ai, faça login e clique em "New Application". Dê um nome qualquer (ex: "Quórum"). Ao criar, você receberá o Client ID e o Client Secret.',
+                    icon: Icons.apps_outlined,
+                    isDark: isDark,
+                    tp: tp,
+                    ts: ts,
+                    surf: surf,
+                    bord: bord,
+                  ),
+                  const SizedBox(height: 10),
+                  _InstructionStep(
+                    step: '3',
+                    title: 'Conecte ao MeuPluggy',
+                    description:
+                        'Dentro da sua Application no dashboard, clique em "Preview in Demo". Na tela que abrir, clique em "Connect MeuPluggy" e selecione sua conta do meu.pluggy.ai.',
+                    icon: Icons.link_outlined,
+                    isDark: isDark,
+                    tp: tp,
+                    ts: ts,
+                    surf: surf,
+                    bord: bord,
+                  ),
+                  const SizedBox(height: 10),
+                  _InstructionStep(
+                    step: '4',
+                    title: 'Copie o Item ID',
+                    description:
+                        'Ainda no Demo, sua conta conectada aparecerá como um "Item". Clique no menu ⋮ ao lado do item e selecione "Copiar Item ID". Esse é o ID da sua conexão bancária.',
+                    icon: Icons.content_copy_outlined,
+                    isDark: isDark,
+                    tp: tp,
+                    ts: ts,
+                    surf: surf,
+                    bord: bord,
+                  ),
+                  const SizedBox(height: 10),
+                  _InstructionStep(
+                    step: '5',
+                    title: 'Cole as credenciais no Quórum',
+                    description:
+                        'Clique em "Continuar para configuração" abaixo e preencha os três campos: Client ID, Client Secret e Item ID.',
+                    icon: Icons.vpn_key_outlined,
+                    isDark: isDark,
+                    tp: tp,
+                    ts: ts,
+                    surf: surf,
+                    bord: bord,
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.accent.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 16, color: AppColors.accent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Suas credenciais ficam armazenadas apenas no seu dispositivo (criptografadas). '
+                            'O Quórum nunca envia seus dados bancários para servidores próprios.',
+                            style: AppTextStyles.label(ts),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Fechar'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.settings_outlined, size: 16),
+              label: const Text('Continuar para configuração'),
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (goToConfig != true || !mounted) return;
+
+    // Agora abre o diálogo de credenciais
     final notifier = ref.read(pluggyConfigProvider.notifier);
     final config = ref.read(pluggyConfigProvider).value;
 
@@ -206,8 +357,7 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
         TextEditingController(text: config?.clientId ?? '');
     final clientSecretCtrl =
         TextEditingController(text: config?.clientSecret ?? '');
-    final itemIdCtrl =
-        TextEditingController(text: config?.itemId ?? '');
+    final itemIdCtrl = TextEditingController(text: config?.itemId ?? '');
 
     final saved = await showDialog<bool>(
       context: context,
@@ -227,18 +377,13 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
               itemIdCtrl.text.trim().isNotEmpty;
 
           return AlertDialog(
-            title: Text('Configurar Pluggy',
+            title: Text('Credenciais Pluggy',
                 style: AppTextStyles.sectionTitle(tp)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Obtenha as credenciais em dashboard.pluggy.ai',
-                    style: AppTextStyles.label(ts),
-                  ),
-                  const SizedBox(height: 16),
                   _DialogField(
                     label: 'Client ID',
                     controller: clientIdCtrl,
@@ -259,8 +404,7 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'O Item ID é obtido no Demo da sua Application\n'
-                    '(menu ⋮ → "Copiar Item ID")',
+                    'Encontre essas informações em dashboard.pluggy.ai',
                     style: AppTextStyles.label(ts),
                   ),
                 ],
@@ -272,9 +416,8 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
                 child: const Text('Cancelar'),
               ),
               FilledButton(
-                onPressed: canSave()
-                    ? () => Navigator.pop(ctx, true)
-                    : null,
+                onPressed:
+                    canSave() ? () => Navigator.pop(ctx, true) : null,
                 style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary),
                 child: const Text('Salvar'),
@@ -294,7 +437,6 @@ class _PluggySectionState extends ConsumerState<_PluggySection> {
       if (turnOnAfter) {
         await notifier.setEnabled(true);
       }
-      // Sobe as credenciais para o Drive
       ref.read(syncServiceProvider).scheduleUpload();
     }
   }
@@ -458,6 +600,76 @@ class _DialogField extends StatelessWidget {
         labelText: label,
         border: const OutlineInputBorder(),
         isDense: true,
+      ),
+    );
+  }
+}
+
+class _InstructionStep extends StatelessWidget {
+  final String step;
+  final String title;
+  final String description;
+  final IconData icon;
+  final bool isDark;
+  final Color tp;
+  final Color ts;
+  final Color surf;
+  final Color bord;
+
+  const _InstructionStep({
+    required this.step,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.isDark,
+    required this.tp,
+    required this.ts,
+    required this.surf,
+    required this.bord,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surf,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: bord),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                step,
+                style: AppTextStyles.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.bodyBold(tp)),
+                const SizedBox(height: 3),
+                Text(description, style: AppTextStyles.label(ts)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

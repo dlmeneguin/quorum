@@ -14,12 +14,22 @@ final transactionsProvider = StreamProvider<List<Transaction>>((ref) {
   return db.transactionsDao.watchTransactionsByPeriod(start, end);
 });
 
+// Todas as transações (para busca global)
+final allTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.transactionsDao.watchTransactionsByPeriod(
+    DateTime(2000),
+    DateTime(2100),
+  );
+});
+
 // Filtro de tipo selecionado na tela de transações
 // 'all', 'income', 'expense'
 final transactionTypeFilterProvider = StateProvider<String>((ref) => 'all');
 
 // Transações filtradas por tipo
-final filteredTransactionsProvider = Provider<AsyncValue<List<Transaction>>>((ref) {
+final filteredTransactionsProvider =
+    Provider<AsyncValue<List<Transaction>>>((ref) {
   final transactionsAsync = ref.watch(transactionsProvider);
   final filter = ref.watch(transactionTypeFilterProvider);
 

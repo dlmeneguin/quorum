@@ -12,9 +12,17 @@ final accountsProvider = StreamProvider<List<Account>>((ref) {
 // Calcula o saldo de uma conta a partir de transações e contribuições de metas
 // Helper puro — usado tanto no provider quanto na validação
 Future<double> computeAccountBalance(AppDatabase db, Account account) async {
-  final transactions = await db.transactionsDao
+  final now = DateTime.now().millisecondsSinceEpoch;
+
+  final allTransactions = await db.transactionsDao
       .watchTransactionsByAccount(account.id)
       .first;
+
+  // Apenas transações com data <= agora (modelo "compromisso futuro"):
+  // parcelas futuras não deduzem o saldo até a data delas chegar.
+  final transactions = allTransactions
+      .where((t) => t.date <= now && t.deletedAt == null)
+      .toList();
 
   double balance = account.initialBalance;
   for (final t in transactions) {
