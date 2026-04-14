@@ -148,7 +148,6 @@ class _TransactionFormScreenState
     }
   }
 
-  // Retorna true se salvou, false se barrado por saldo insuficiente
   Future<bool> _saveSimple(
       AppDatabase db, double amount, int dateTs, int now) async {
     if (_selectedType == 'expense') {
@@ -369,394 +368,397 @@ class _TransactionFormScreenState
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            // Seletor de tipo
-            _SectionLabel('Tipo', textSecondary),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _TypeButton(
-                    label: 'Despesa',
-                    icon: Icons.arrow_upward_rounded,
-                    color: AppColors.danger,
-                    isSelected: _selectedType == 'expense',
-                    onTap: () => setState(() {
-                      _selectedType = 'expense';
-                      _selectedCategoryId = null;
-                      _balanceError = null;
-                    }),
+      // ── FIX 2: SafeArea envolve o body inteiro para respeitar a navbar do sistema ──
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            children: [
+              // Seletor de tipo
+              _SectionLabel('Tipo', textSecondary),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TypeButton(
+                      label: 'Despesa',
+                      icon: Icons.arrow_upward_rounded,
+                      color: AppColors.danger,
+                      isSelected: _selectedType == 'expense',
+                      onTap: () => setState(() {
+                        _selectedType = 'expense';
+                        _selectedCategoryId = null;
+                        _balanceError = null;
+                      }),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TypeButton(
-                    label: 'Receita',
-                    icon: Icons.arrow_downward_rounded,
-                    color: AppColors.success,
-                    isSelected: _selectedType == 'income',
-                    onTap: () => setState(() {
-                      _selectedType = 'income';
-                      _selectedCategoryId = null;
-                      _balanceError = null;
-                    }),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TypeButton(
+                      label: 'Receita',
+                      icon: Icons.arrow_downward_rounded,
+                      color: AppColors.success,
+                      isSelected: _selectedType == 'income',
+                      onTap: () => setState(() {
+                        _selectedType = 'income';
+                        _selectedCategoryId = null;
+                        _balanceError = null;
+                      }),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TypeButton(
-                    label: 'Transferência',
-                    icon: Icons.swap_horiz_rounded,
-                    color: AppColors.accent,
-                    isSelected: _selectedType == 'transfer',
-                    onTap: () => setState(() {
-                      _selectedType = 'transfer';
-                      _selectedCategoryId = null;
-                      _balanceError = null;
-                    }),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TypeButton(
+                      label: 'Transferência',
+                      icon: Icons.swap_horiz_rounded,
+                      color: AppColors.accent,
+                      isSelected: _selectedType == 'transfer',
+                      onTap: () => setState(() {
+                        _selectedType = 'transfer';
+                        _selectedCategoryId = null;
+                        _balanceError = null;
+                      }),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                ],
+              ),
+              const SizedBox(height: 24),
 
-            // Valor
-            _SectionLabel('Valor', textSecondary),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              onChanged: _onAmountChanged,
-              validator: (_) =>
-                  _amountCents <= 0 ? 'Informe um valor maior que zero' : null,
-              decoration: InputDecoration(
-                hintText: '0,00',
-                errorText: _balanceError,
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 16, right: 8),
-                  child: Text(
-                    'R\$',
-                    style: AppTextStyles.bodyBold(
-                      _selectedType == 'income'
+              // Valor
+              _SectionLabel('Valor', textSecondary),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                onChanged: _onAmountChanged,
+                validator: (_) =>
+                    _amountCents <= 0 ? 'Informe um valor maior que zero' : null,
+                decoration: InputDecoration(
+                  hintText: '0,00',
+                  errorText: _balanceError,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 8),
+                    child: Text(
+                      'R\$',
+                      style: AppTextStyles.bodyBold(
+                        _selectedType == 'income'
+                            ? AppColors.success
+                            : _selectedType == 'transfer'
+                                ? AppColors.accent
+                                : AppColors.danger,
+                      ),
+                    ),
+                  ),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.borderDark
+                          : AppColors.borderLight,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: _selectedType == 'income'
                           ? AppColors.success
                           : _selectedType == 'transfer'
                               ? AppColors.accent
                               : AppColors.danger,
+                      width: 2,
                     ),
                   ),
                 ),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 0, minHeight: 0),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: isDark
-                        ? AppColors.borderDark
-                        : AppColors.borderLight,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: _selectedType == 'income'
-                        ? AppColors.success
-                        : _selectedType == 'transfer'
-                            ? AppColors.accent
-                            : AppColors.danger,
-                    width: 2,
-                  ),
+                style: AppTextStyles.splineSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: _selectedType == 'income'
+                      ? AppColors.success
+                      : _selectedType == 'transfer'
+                          ? AppColors.accent
+                          : AppColors.danger,
                 ),
               ),
-              style: AppTextStyles.splineSans(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: _selectedType == 'income'
-                    ? AppColors.success
-                    : _selectedType == 'transfer'
-                        ? AppColors.accent
-                        : AppColors.danger,
-              ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Data
-            _SectionLabel('Data', textSecondary),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.surfaceDark
-                      : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
+              // Data
+              _SectionLabel('Data', textSecondary),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
                     color: isDark
-                        ? AppColors.borderDark
-                        : AppColors.borderLight,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_today_outlined,
-                        size: 18, color: textSecondary),
-                    const SizedBox(width: 12),
-                    Text(
-                      AppDateUtils.toFullDate(_selectedDate),
-                      style: AppTextStyles.body(textPrimary),
+                        ? AppColors.surfaceDark
+                        : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.borderDark
+                          : AppColors.borderLight,
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 18, color: textSecondary),
+                      const SizedBox(width: 12),
+                      Text(
+                        AppDateUtils.toFullDate(_selectedDate),
+                        style: AppTextStyles.body(textPrimary),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Conta origem
-            _SectionLabel(
-              _selectedType == 'transfer' ? 'Conta de origem' : 'Conta',
-              textSecondary,
-            ),
-            const SizedBox(height: 8),
-            accountsAsync.when(
-              data: (accounts) => _DropdownField<String>(
-                value: _selectedAccountId,
-                hint: 'Selecione a conta',
-                items: accounts
-                    .map((a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text(a.name,
-                              style: AppTextStyles.body(textPrimary)),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _selectedAccountId = v;
-                  _balanceError = null;
-                }),
-                isDark: isDark,
+              // Conta origem
+              _SectionLabel(
+                _selectedType == 'transfer' ? 'Conta de origem' : 'Conta',
+                textSecondary,
               ),
-              loading: () => const CircularProgressIndicator(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 24),
-
-            // Conta destino (só para transferência)
-            if (_selectedType == 'transfer') ...[
-              _SectionLabel('Conta de destino', textSecondary),
               const SizedBox(height: 8),
               accountsAsync.when(
                 data: (accounts) => _DropdownField<String>(
-                  value: _selectedToAccountId,
-                  hint: 'Selecione a conta destino',
+                  value: _selectedAccountId,
+                  hint: 'Selecione a conta',
                   items: accounts
-                      .where((a) => a.id != _selectedAccountId)
                       .map((a) => DropdownMenuItem(
                             value: a.id,
                             child: Text(a.name,
                                 style: AppTextStyles.body(textPrimary)),
                           ))
                       .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedToAccountId = v),
+                  onChanged: (v) => setState(() {
+                    _selectedAccountId = v;
+                    _balanceError = null;
+                  }),
                   isDark: isDark,
                 ),
                 loading: () => const CircularProgressIndicator(),
                 error: (_, __) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 24),
-            ],
 
-            // Categoria (não aparece em transferência)
-            if (_selectedType != 'transfer') ...[
-              _SectionLabel('Categoria', textSecondary),
-              const SizedBox(height: 8),
-              categoriesAsync.when(
-                data: (categories) => _DropdownField<String>(
-                  value: _selectedCategoryId,
-                  hint: 'Selecione a categoria',
-                  items: categories
-                      .map((c) => DropdownMenuItem(
-                            value: c.id,
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: c.color != null
-                                        ? Color(c.color!)
-                                        : AppColors.primary,
-                                    shape: BoxShape.circle,
+              // Conta destino (só para transferência)
+              if (_selectedType == 'transfer') ...[
+                _SectionLabel('Conta de destino', textSecondary),
+                const SizedBox(height: 8),
+                accountsAsync.when(
+                  data: (accounts) => _DropdownField<String>(
+                    value: _selectedToAccountId,
+                    hint: 'Selecione a conta destino',
+                    items: accounts
+                        .where((a) => a.id != _selectedAccountId)
+                        .map((a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.name,
+                                  style: AppTextStyles.body(textPrimary)),
+                            ))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedToAccountId = v),
+                    isDark: isDark,
+                  ),
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Categoria (não aparece em transferência)
+              if (_selectedType != 'transfer') ...[
+                _SectionLabel('Categoria', textSecondary),
+                const SizedBox(height: 8),
+                categoriesAsync.when(
+                  data: (categories) => _DropdownField<String>(
+                    value: _selectedCategoryId,
+                    hint: 'Selecione a categoria',
+                    items: categories
+                        .map((c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: c.color != null
+                                          ? Color(c.color!)
+                                          : AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(c.name,
-                                    style:
-                                        AppTextStyles.body(textPrimary)),
-                              ],
-                            ),
+                                  const SizedBox(width: 10),
+                                  Text(c.name,
+                                      style:
+                                          AppTextStyles.body(textPrimary)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedCategoryId = v),
+                    isDark: isDark,
+                  ),
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Descrição
+              _SectionLabel('Descrição (opcional)', textSecondary),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  hintText: 'Ex: Supermercado Extra...',
+                ),
+                style: AppTextStyles.body(textPrimary),
+              ),
+              const SizedBox(height: 24),
+
+              // Método de pagamento (não aparece em transferência)
+              if (_selectedType != 'transfer') ...[
+                _SectionLabel(
+                    'Método de pagamento (opcional)', textSecondary),
+                const SizedBox(height: 8),
+                _DropdownField<String>(
+                  value: _selectedPaymentMethod,
+                  hint: 'Selecione o método',
+                  items: _paymentMethods
+                      .map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m,
+                                style: AppTextStyles.body(textPrimary)),
                           ))
                       .toList(),
                   onChanged: (v) =>
-                      setState(() => _selectedCategoryId = v),
+                      setState(() => _selectedPaymentMethod = v),
                   isDark: isDark,
                 ),
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Descrição
-            _SectionLabel('Descrição (opcional)', textSecondary),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                hintText: 'Ex: Supermercado Extra...',
-              ),
-              style: AppTextStyles.body(textPrimary),
-            ),
-            const SizedBox(height: 24),
-
-            // Método de pagamento (não aparece em transferência)
-            if (_selectedType != 'transfer') ...[
-              _SectionLabel(
-                  'Método de pagamento (opcional)', textSecondary),
-              const SizedBox(height: 8),
-              _DropdownField<String>(
-                value: _selectedPaymentMethod,
-                hint: 'Selecione o método',
-                items: _paymentMethods
-                    .map((m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(m,
-                              style: AppTextStyles.body(textPrimary)),
-                        ))
-                    .toList(),
-                onChanged: (v) =>
-                    setState(() => _selectedPaymentMethod = v),
-                isDark: isDark,
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Opções avançadas (só para criação, não edição)
-            if (!isEditing && _selectedType != 'transfer') ...[
-              _SectionLabel('Opções', textSecondary),
-              const SizedBox(height: 8),
-
-              _OptionTile(
-                icon: Icons.repeat_rounded,
-                label: 'Recorrente mensal',
-                subtitle: 'Repete automaticamente todo mês',
-                value: _isRecurring,
-                color: AppColors.primary,
-                isDark: isDark,
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
-                onChanged: (v) => setState(() {
-                  _isRecurring = v;
-                  if (v) _isInstallment = false;
-                }),
-              ),
-              const SizedBox(height: 8),
-
-              _OptionTile(
-                icon: Icons.credit_card_outlined,
-                label: 'Parcelado',
-                subtitle: 'Divide o valor em parcelas mensais',
-                value: _isInstallment,
-                color: const Color(0xFF6366F1),
-                isDark: isDark,
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
-                onChanged: (v) => setState(() {
-                  _isInstallment = v;
-                  if (v) _isRecurring = false;
-                }),
-              ),
-
-              if (_isInstallment) ...[
-                const SizedBox(height: 16),
-                _SectionLabel('Número de parcelas', textSecondary),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: _installmentCount > 2
-                          ? () => setState(() => _installmentCount--)
-                          : null,
-                      icon: const Icon(Icons.remove_circle_outline),
-                      color: AppColors.primary,
-                    ),
-                    Container(
-                      width: 60,
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$_installmentCount x',
-                        style: AppTextStyles.splineSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _installmentCount < 48
-                          ? () => setState(() => _installmentCount++)
-                          : null,
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _amountCents > 0
-                            ? '${CurrencyUtils.format(_amountCents / 100 / _installmentCount)} / parcela'
-                            : '',
-                        style: AppTextStyles.label(textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 24),
               ],
-              const SizedBox(height: 24),
-            ],
 
-            // Botão salvar
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton(
-                onPressed: _isSaving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              // Opções avançadas (só para criação, não edição)
+              if (!isEditing && _selectedType != 'transfer') ...[
+                _SectionLabel('Opções', textSecondary),
+                const SizedBox(height: 8),
+
+                _OptionTile(
+                  icon: Icons.repeat_rounded,
+                  label: 'Recorrente mensal',
+                  subtitle: 'Repete automaticamente todo mês',
+                  value: _isRecurring,
+                  color: AppColors.primary,
+                  isDark: isDark,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  onChanged: (v) => setState(() {
+                    _isRecurring = v;
+                    if (v) _isInstallment = false;
+                  }),
                 ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        isEditing ? 'Salvar alterações' : 'Adicionar',
-                        style: AppTextStyles.bodyBold(Colors.white),
+                const SizedBox(height: 8),
+
+                _OptionTile(
+                  icon: Icons.credit_card_outlined,
+                  label: 'Parcelado',
+                  subtitle: 'Divide o valor em parcelas mensais',
+                  value: _isInstallment,
+                  color: const Color(0xFF6366F1),
+                  isDark: isDark,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  onChanged: (v) => setState(() {
+                    _isInstallment = v;
+                    if (v) _isRecurring = false;
+                  }),
+                ),
+
+                if (_isInstallment) ...[
+                  const SizedBox(height: 16),
+                  _SectionLabel('Número de parcelas', textSecondary),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _installmentCount > 2
+                            ? () => setState(() => _installmentCount--)
+                            : null,
+                        icon: const Icon(Icons.remove_circle_outline),
+                        color: AppColors.primary,
                       ),
+                      Container(
+                        width: 60,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$_installmentCount x',
+                          style: AppTextStyles.splineSans(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _installmentCount < 48
+                            ? () => setState(() => _installmentCount++)
+                            : null,
+                        icon: const Icon(Icons.add_circle_outline),
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _amountCents > 0
+                              ? '${CurrencyUtils.format(_amountCents / 100 / _installmentCount)} / parcela'
+                              : '',
+                          style: AppTextStyles.label(textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 24),
+              ],
+
+              // ── Botão salvar — com espaço extra para navbar do celular ──
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: _isSaving ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          isEditing ? 'Salvar alterações' : 'Adicionar',
+                          style: AppTextStyles.bodyBold(Colors.white),
+                        ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -520,6 +520,127 @@ class _AdvancedFilters extends ConsumerWidget {
     required this.onClear,
   });
 
+  List<DropdownMenuItem<String>> _buildCategoryItems(
+    List<Category> categories,
+  ) {
+    final expenses = categories.where((c) => c.type == 'expense').toList();
+    final incomes = categories.where((c) => c.type == 'income').toList();
+    final tpColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+
+    final items = <DropdownMenuItem<String>>[];
+
+    // Opção "Todas"
+    items.add(DropdownMenuItem(
+      value: null,
+      child: Text('Todas as categorias',
+          style: AppTextStyles.label(textSecondary)),
+    ));
+
+    // ── Cabeçalho Despesas ──
+    if (expenses.isNotEmpty) {
+      items.add(DropdownMenuItem(
+        enabled: false,
+        value: '__header_expense__',
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 2),
+          child: Row(children: [
+            Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                    color: AppColors.danger, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text('DESPESAS',
+                style: AppTextStyles.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.danger)),
+          ]),
+        ),
+      ));
+      for (final c in expenses) {
+        items.add(DropdownMenuItem(
+          value: c.id,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(children: [
+              Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: c.color != null ? Color(c.color!) : AppColors.primary,
+                    shape: BoxShape.circle,
+                  )),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: Text(c.name,
+                      style: AppTextStyles.label(tpColor),
+                      overflow: TextOverflow.ellipsis)),
+            ]),
+          ),
+        ));
+      }
+    }
+
+    // ── Separador visual ──
+    if (expenses.isNotEmpty && incomes.isNotEmpty) {
+      items.add(DropdownMenuItem(
+        enabled: false,
+        value: '__divider__',
+        child: const Divider(height: 8, thickness: 1),
+      ));
+    }
+
+    // ── Cabeçalho Receitas ──
+    if (incomes.isNotEmpty) {
+      items.add(DropdownMenuItem(
+        enabled: false,
+        value: '__header_income__',
+        child: Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 2),
+          child: Row(children: [
+            Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                    color: AppColors.success, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text('RECEITAS',
+                style: AppTextStyles.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.success)),
+          ]),
+        ),
+      ));
+      for (final c in incomes) {
+        items.add(DropdownMenuItem(
+          value: c.id,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(children: [
+              Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: c.color != null ? Color(c.color!) : AppColors.primary,
+                    shape: BoxShape.circle,
+                  )),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: Text(c.name,
+                      style: AppTextStyles.label(tpColor),
+                      overflow: TextOverflow.ellipsis)),
+            ]),
+          ),
+        ));
+      }
+    }
+
+    return items;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -531,7 +652,7 @@ class _AdvancedFilters extends ConsumerWidget {
     return categoriesAsync.when(
       data: (categories) => Row(
         children: [
-          // Dropdown categoria
+          // Dropdown categoria com grupos
           Expanded(
             child: _CompactDropdown<String>(
               hint: 'Categoria',
@@ -540,40 +661,7 @@ class _AdvancedFilters extends ConsumerWidget {
               surfaceColor: surfaceColor,
               borderColor: borderColor,
               textSecondary: textSecondary,
-              items: [
-                DropdownMenuItem(
-                  value: null,
-                  child: Text('Todas as categorias',
-                      style: AppTextStyles.label(textSecondary)),
-                ),
-                ...categories.map((c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: c.color != null
-                                  ? Color(c.color!)
-                                  : AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(c.name,
-                                style: AppTextStyles.label(
-                                  isDark
-                                      ? AppColors.textPrimaryDark
-                                      : AppColors.textPrimaryLight,
-                                ),
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                        ],
-                      ),
-                    )),
-              ],
+              items: _buildCategoryItems(categories),
               onChanged: onCategoryChanged,
             ),
           ),
