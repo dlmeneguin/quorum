@@ -15,6 +15,8 @@ class SyncService {
   bool _isSyncing = false;
 
   static const _lastSyncKey   = 'last_sync_timestamp';
+  // Hash do último JSON que este dispositivo enviou ao Drive
+  static const _lastUploadHashKey = 'last_upload_hash';
   static const _checkInterval = Duration(seconds: 30);
 
   SyncService(this.db) : _merge = MergeService(db);
@@ -32,21 +34,14 @@ class SyncService {
     await _checkAndSync();
   }
 
-  /// Chamado quando o usuário clica em "Conectar com Google".
-  /// Sempre faz overwrite se o Drive tiver dados — o usuário está
-  /// se conectando "do zero" neste dispositivo.
   Future<void> onUserConnected() async {
     debugPrint('[Sync] Usuário conectou. Verificando Drive...');
-
     try {
       final remoteTime = await DriveBackupService.getRemoteModifiedTime();
-
       if (remoteTime == null) {
-        // Drive vazio — este dispositivo envia os dados locais
         debugPrint('[Sync] Drive vazio. Upload inicial.');
         await _doUpload();
       } else {
-        // Drive tem dados — overwrite completo nos dados locais
         debugPrint('[Sync] Drive tem dados. Overwrite local.');
         await _doOverwrite();
       }
@@ -58,12 +53,12 @@ class SyncService {
   void scheduleUpload() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 10), _doUpload);
-    debugPrint('[Sync] Upload agendado em 30s.');
+    debugPrint('[Sync] Upload agendado em 10s.');
   }
 
   Future<void> forceUpload() async {
     _debounceTimer?.cancel();
-    await _doUpload();
+    await _doUpload(force: true);
   }
 
   Future<void> deleteSyncData() async {
@@ -80,8 +75,6 @@ class SyncService {
 
   // ── Privados ──────────────────────────────────────────────────────────────
 
-  /// Lógica central de sync periódico e startup.
-  /// Verifica o sinal de reset ANTES de decidir merge ou upload.
   Future<void> _checkAndSync() async {
     final email = await GoogleAuthService.currentUserEmail();
     if (email == null) return;
@@ -91,14 +84,11 @@ class SyncService {
       final resetAt = await DriveBackupService.getResetSignalTime();
 
       if (resetAt != null) {
-        final prefs     = await SharedPreferences.getInstance();
+        final prefs      = await SharedPreferences.getInstance();
         final lastSyncMs = prefs.getInt(_lastSyncKey) ?? 0;
-        final lastSync  = DateTime.fromMillisecondsSinceEpoch(lastSyncMs);
+        final lastSync   = DateTime.fromMillisecondsSinceEpoch(lastSyncMs);
 
         if (resetAt.isAfter(lastSync)) {
-          // O reset aconteceu DEPOIS da última sincronização deste dispositivo.
-          // Este dispositivo estava inativo quando o reset ocorreu.
-          // Deve desconectar — o usuário precisará reconectar manualmente.
           debugPrint(
             '[Sync] Reset detectado (resetAt=$resetAt > lastSync=$lastSync). '
             'Desconectando dispositivo.',
@@ -106,32 +96,34 @@ class SyncService {
           await _disconnectLocally();
           return;
         } else {
-          // O reset é mais antigo que o último sync — este dispositivo já
-          // estava sincronizado após o reset (provavelmente foi quem causou).
           debugPrint('[Sync] Reset antigo (anterior ao último sync). Ignorando.');
         }
       }
 
-      // ── Passo 2: sync normal ──
-      final remoteTime = await DriveBackupService.getRemoteModifiedTime();
+      // ── Passo 2: compara hash local com hash remoto ──
+      final remoteHash = await DriveBackupService.getRemoteHash();
 
-      if (remoteTime == null) {
+      if (remoteHash == null) {
         // Drive vazio — faz upload
         debugPrint('[Sync] Drive vazio. Fazendo upload.');
         await _doUpload();
         return;
       }
 
-      final prefs      = await SharedPreferences.getInstance();
-      final lastSyncMs = prefs.getInt(_lastSyncKey) ?? 0;
-      final lastSync   = DateTime.fromMillisecondsSinceEpoch(lastSyncMs);
+      final prefs          = await SharedPreferences.getInstance();
+      final lastUploadHash = prefs.getString(_lastUploadHashKey);
 
-      if (remoteTime.isAfter(lastSync)) {
-        debugPrint('[Sync] Drive mais recente. Merge.');
-        await _doMerge();
-      } else {
-        debugPrint('[Sync] Local já atualizado.');
+      if (remoteHash == lastUploadHash) {
+        // O Drive contém exatamente o que este dispositivo enviou por último.
+        // Nenhum outro dispositivo alterou o conteúdo — nada a fazer.
+        debugPrint('[Sync] Hash remoto igual ao último upload. Já sincronizado.');
+        return;
       }
+
+      // ── Passo 3: conteúdo remoto é diferente — precisa de merge ──
+      // (outro dispositivo subiu algo novo)
+      debugPrint('[Sync] Hash remoto diferente. Fazendo merge.');
+      await _doMerge();
     } catch (e, st) {
       debugPrint('[Sync] Erro em _checkAndSync: $e\n$st');
     }
@@ -142,7 +134,9 @@ class SyncService {
     _periodicTimer = Timer.periodic(_checkInterval, (_) => _checkAndSync());
   }
 
-  Future<void> _doUpload() async {
+  /// [force] = true ignora a comparação de hash e sempre sobe.
+  /// Use apenas no `forceUpload()` chamado manualmente pelo usuário.
+  Future<void> _doUpload({bool force = false}) async {
     if (_isSyncing) return;
     _isSyncing = true;
     try {
@@ -150,12 +144,17 @@ class SyncService {
       if (email == null) return;
 
       final json    = await _merge.exportToJson();
-      final success = await DriveBackupService.upload(json);
+      final success = await DriveBackupService.upload(
+        json,
+        forceUpload: force,
+      );
 
       if (success) {
+        final hash  = DriveBackupService.computeHash(json);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-        debugPrint('[Sync] Upload concluído.');
+        await prefs.setString(_lastUploadHashKey, hash);
+        debugPrint('[Sync] Upload concluído. hash=$hash');
       }
     } catch (e, st) {
       debugPrint('[Sync] Erro em _doUpload: $e\n$st');
@@ -173,9 +172,14 @@ class SyncService {
 
       await _merge.overwriteFromJson(remoteJson);
 
+      // Após overwrite, o estado local agora espelha o remoto.
+      // Salva o hash do remoto como "último upload" para que o periódico
+      // não ache que há diferença.
+      final hash  = DriveBackupService.computeHash(remoteJson);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-      debugPrint('[Sync] Overwrite concluído.');
+      await prefs.setString(_lastUploadHashKey, hash);
+      debugPrint('[Sync] Overwrite concluído. hash=$hash');
     } catch (e, st) {
       debugPrint('[Sync] Erro em _doOverwrite: $e\n$st');
     } finally {
@@ -191,11 +195,29 @@ class SyncService {
       if (remoteJson == null) return;
 
       final mergedJson = await _merge.mergeFromJson(remoteJson);
-      await DriveBackupService.upload(mergedJson);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-      debugPrint('[Sync] Merge + upload concluídos.');
+      // Compara o JSON mesclado com o remoto:
+      // se forem idênticos (sem novidades locais), não faz upload.
+      final mergedHash = DriveBackupService.computeHash(mergedJson);
+      final remoteHash = DriveBackupService.computeHash(remoteJson);
+
+      if (mergedHash == remoteHash) {
+        // Merge não produziu diferenças — apenas atualiza o estado local.
+        debugPrint('[Sync] Merge sem diferenças. Nenhum upload necessário.');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+        await prefs.setString(_lastUploadHashKey, mergedHash);
+        return;
+      }
+
+      // Há diferenças — sobe o JSON mesclado.
+      final success = await DriveBackupService.upload(mergedJson);
+      if (success) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+        await prefs.setString(_lastUploadHashKey, mergedHash);
+        debugPrint('[Sync] Merge + upload concluídos. hash=$mergedHash');
+      }
     } catch (e, st) {
       debugPrint('[Sync] Erro em _doMerge: $e\n$st');
     } finally {
@@ -206,6 +228,7 @@ class SyncService {
   Future<void> _disconnectLocally() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_lastSyncKey);
+    await prefs.remove(_lastUploadHashKey);
     await GoogleAuthService.signOut();
     debugPrint('[Sync] Desconectado localmente.');
   }
