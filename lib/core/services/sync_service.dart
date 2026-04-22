@@ -57,7 +57,7 @@ class SyncService {
 
   void scheduleUpload() {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(seconds: 30), _doUpload);
+    _debounceTimer = Timer(const Duration(seconds: 10), _doUpload);
     debugPrint('[Sync] Upload agendado em 30s.');
   }
 
