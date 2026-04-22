@@ -12,6 +12,7 @@ import '../../pluggy/providers/pluggy_provider.dart';
 import '../../pluggy/screens/pluggy_test_screen.dart';
 import '../../accounts/providers/accounts_provider.dart';
 import 'factory_reset_screen.dart';
+import '../../../shared/widgets/debug_console_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -1084,6 +1085,26 @@ class _SyncSectionState extends ConsumerState<_SyncSection> {
               ),
             ),
           ],
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DebugConsoleScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.terminal,
+                  size: 16, color: Color(0xFF6B7280)),
+              label: Text('Console de debug',
+                  style: AppTextStyles.bodyBold(
+                      const Color(0xFF6B7280))),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                side: const BorderSide(color: Color(0xFF6B7280)),
+              ),
+            ),
+          ),
         ],
       ),
     );
