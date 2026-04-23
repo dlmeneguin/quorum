@@ -10,6 +10,7 @@ import '../../features/goals/screens/goals_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/pluggy/providers/pluggy_provider.dart';
 import '../../features/pluggy/screens/pluggy_import_screen.dart';
+import '../../features/pix/screens/pix_screen.dart';
 import 'alberto_widgets.dart';
 import 'splash_screen.dart';
 
@@ -30,6 +31,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     _NavItem(icon: LucideIcons.arrowLeftRight, label: 'Transações'),
     _NavItem(icon: LucideIcons.pieChart, label: 'Orçamento'),
     _NavItem(icon: LucideIcons.target, label: 'Metas'),
+    _NavItem(icon: LucideIcons.qrCode, label: 'Pix'),
     _NavItem(icon: LucideIcons.settings, label: 'Configurações'),
   ];
 
@@ -38,6 +40,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     TransactionsScreen(),
     BudgetScreen(),
     GoalsScreen(),
+    PixScreen(),
     SettingsScreen(),
   ];
 
