@@ -34,7 +34,7 @@ class _PixScreenState extends State<PixScreen> {
   String? _pixPayload;
   bool _showQr = false;
   bool _exporting = false;
-  bool _copyingImage = false; // Estado para o loading do botão
+  bool _copyingImage = false; 
 
   final _keyTypes = [
     ('cpf', 'CPF', 'Ex: 000.000.000-00'),
@@ -167,8 +167,6 @@ class _PixScreenState extends State<PixScreen> {
     );
   }
 
-  // Copia a IMAGEM do QR Code para a área de transferência via super_clipboard
-  // Funciona no Android e Windows. No Android exige o <provider> no AndroidManifest.xml.
   Future<void> _copyQrCodeImage() async {
     if (_pixPayload == null || _copyingImage) return;
     setState(() => _copyingImage = true);
@@ -176,7 +174,6 @@ class _PixScreenState extends State<PixScreen> {
     try {
       await Future.delayed(const Duration(milliseconds: 50));
 
-      // 1. Renderiza o RepaintBoundary para bytes PNG
       final boundary =
           _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -184,7 +181,6 @@ class _PixScreenState extends State<PixScreen> {
       if (byteData == null) throw Exception('Falha ao renderizar QR Code');
       final pngBytes = byteData.buffer.asUint8List();
 
-      // 2. Escreve no clipboard via super_clipboard
       final clipboard = SystemClipboard.instance;
       if (clipboard == null) {
         throw Exception('Clipboard não disponível nesta plataforma');
@@ -453,26 +449,46 @@ class _PixScreenState extends State<PixScreen> {
                           if (_amountCents == 0) Text('Valor em aberto — o pagador define', style: AppTextStyles.label(textSecondary)),
                           const SizedBox(height: 24),
 
-                          Row(
+                          // Seção de botões em coluna conforme solicitado
+                          Column(
                             children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _copyQrCodeImage, // CHAMA A NOVA FUNÇÃO DE IMAGEM
-                                  icon: _copyingImage 
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                                    : const Icon(Icons.copy, size: 16),
-                                  label: Text(_copyingImage ? 'Copiando...' : 'Copiar QR Code'),
-                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), side: const BorderSide(color: AppColors.primary), foregroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _copyQrCodeImage, // Copia a imagem do QR
+                                      icon: _copyingImage 
+                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                                        : const Icon(Icons.copy, size: 16),
+                                      label: Text(_copyingImage ? 'Copiando...' : 'Copiar QR Code'),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 14), 
+                                        side: const BorderSide(color: AppColors.primary), 
+                                        foregroundColor: AppColors.primary, 
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: _exporting ? null : _exportQrCode, 
-                                  icon: _exporting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.share, size: 16),
-                                  label: Text(_exporting ? 'Exportando...' : 'Salvar/Compartilhar'),
-                                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      onPressed: _exporting ? null : _exportQrCode, // Salva/Compartilha imagem
+                                      icon: _exporting 
+                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                                        : const Icon(Icons.share, size: 16),
+                                      label: Text(_exporting ? 'Exportando...' : 'Salvar / Compartilhar imagem'),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.primary, 
+                                        padding: const EdgeInsets.symmetric(vertical: 14), 
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -484,7 +500,7 @@ class _PixScreenState extends State<PixScreen> {
 
                     const SizedBox(height: 16),
                     GestureDetector(
-                      onTap: _copyPayload, // MANTÉM A CÓPIA DO TEXTO NO BLOCO INFERIOR
+                      onTap: _copyPayload, // Clique para copiar o texto (Copia e Cola)
                       child: Container(
                         width: double.infinity, padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA), borderRadius: BorderRadius.circular(10), border: Border.all(color: borderColor)),

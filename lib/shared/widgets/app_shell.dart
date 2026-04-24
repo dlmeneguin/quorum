@@ -51,7 +51,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       _pendingPluggyTxs = txs;
     } catch (e) {
       debugPrint('[AppShell] Erro no initialize: $e');
-      // Garante que o app continua mesmo com erro
       _pendingPluggyTxs = [];
     }
   }
@@ -75,7 +74,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    // CORRIGIDO: era "if (_isReady)" — estava invertido
     if (!_isReady) {
       return SplashScreen(
         onReady: _initialize,
@@ -106,7 +104,6 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-// Layout Windows — sidebar fixa de 220px
 class _DesktopLayout extends StatelessWidget {
   final List<_NavItem> navItems;
   final List<Widget> screens;
@@ -131,7 +128,6 @@ class _DesktopLayout extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          // Sidebar
           Container(
             width: 220,
             decoration: BoxDecoration(
@@ -186,7 +182,6 @@ class _DesktopLayout extends StatelessWidget {
   }
 }
 
-// Layout Android — bottom navigation bar
 class _MobileLayout extends StatelessWidget {
   final List<_NavItem> navItems;
   final List<Widget> screens;
@@ -209,33 +204,41 @@ class _MobileLayout extends StatelessWidget {
       body: screens[selectedIndex],
       bottomNavigationBar: SafeArea(
         top: false,
-        child: NavigationBarTheme(
-          data: NavigationBarThemeData(
-            labelTextStyle: WidgetStateProperty.resolveWith((states) {
-              final selected = states.contains(WidgetState.selected);
-              return TextStyle(
-                fontSize: 10,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected
-                    ? scheme.primary
-                    : (isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight),
-                overflow: TextOverflow.ellipsis,
-              );
-            }),
-          ),
-          child: NavigationBar(
-            selectedIndex: selectedIndex,
-            onDestinationSelected: onDestinationSelected,
-            destinations: navItems
-                .map(
-                  (item) => NavigationDestination(
-                    icon: Icon(item.icon),
-                    label: item.label,
-                  ),
-                )
-                .toList(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                final selected = states.contains(WidgetState.selected);
+                return TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: selected
+                      ? scheme.primary
+                      : (isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight),
+                  overflow: TextOverflow.ellipsis,
+                );
+              }),
+            ),
+            child: NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: onDestinationSelected,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
+              height: 64,
+              backgroundColor: Colors.transparent, // Transparente para não cortar o fundo com o padding
+              elevation: 0,
+              destinations: navItems
+                  .map(
+                    (item) => NavigationDestination(
+                      icon: Icon(item.icon),
+                      label: item.label,
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         ),
       ),
@@ -243,7 +246,6 @@ class _MobileLayout extends StatelessWidget {
   }
 }
 
-// Item do sidebar desktop
 class _SidebarItem extends StatelessWidget {
   final IconData icon;
   final String label;
