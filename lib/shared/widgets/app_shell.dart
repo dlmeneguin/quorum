@@ -197,49 +197,97 @@ class _MobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-  
     return Scaffold(
       body: screens[selectedIndex],
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                final selected = states.contains(WidgetState.selected);
-                return TextStyle(
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected
-                      ? scheme.primary
-                      : (isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight),
-                  overflow: TextOverflow.ellipsis,
-                );
-              }),
-            ),
-            child: NavigationBar(
-              selectedIndex: selectedIndex,
-              onDestinationSelected: onDestinationSelected,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.onlyShowSelected,
-              height: 64,
-              backgroundColor: Colors.transparent, // Transparente para não cortar o fundo com o padding
-              elevation: 0,
-              destinations: navItems
-                  .map(
-                    (item) => NavigationDestination(
-                      icon: Icon(item.icon),
-                      label: item.label,
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+      bottomNavigationBar: _CustomBottomBar(
+        navItems: navItems,
+        selectedIndex: selectedIndex,
+        onDestinationSelected: onDestinationSelected,
+      ),
+    );
+  }
+}
+
+/// Navbar customizada: cada item tem largura proporcional ao seu conteúdo,
+/// o label selecionado aparece inteiro sem quebrar linha e sem truncar.
+class _CustomBottomBar extends StatelessWidget {
+  final List<_NavItem> navItems;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const _CustomBottomBar({
+    required this.navItems,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final unselectedColor = isDark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondaryLight;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          border: Border(top: BorderSide(color: borderColor, width: 0.5)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: navItems.asMap().entries.map((entry) {
+            final i = entry.key;
+            final item = entry.value;
+            final isSelected = i == selectedIndex;
+            final color = isSelected ? scheme.primary : unselectedColor;
+
+            return Flexible(
+              // Item selecionado recebe mais espaço para acomodar o label
+              flex: isSelected ? 2 : 1,
+              child: GestureDetector(
+                onTap: () => onDestinationSelected(i),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? scheme.primary.withOpacity(0.10)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(item.icon, size: 20, color: color),
+                      if (isSelected) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                            height: 1.1,
+                          ),
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
