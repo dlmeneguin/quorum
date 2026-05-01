@@ -3,6 +3,7 @@ import '../../../core/database/database_provider.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/transactions_dao.dart';
 import '../../../core/models/category_expense.dart';
+import 'package:rxdart/rxdart.dart';
 
 // Mês/ano atualmente selecionado no dashboard
 final selectedMonthProvider = StateProvider<DateTime>((ref) {
