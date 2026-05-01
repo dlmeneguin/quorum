@@ -54,14 +54,18 @@ final balanceHistoryProvider =
     StreamProvider<List<MonthlyBalance>>((ref) {
   final db = ref.watch(databaseProvider);
 
-  // Recalcula sempre que alguma transação mudar
-  return db.transactionsDao
-      .watchTransactionsByPeriod(
-        DateTime(2000),
-        DateTime(2100),
-      )
-      .asyncMap((_) =>
-          db.transactionsDao.getMonthlyBalances(6));
+  // Precisa escutar TANTO transações QUANTO contas, pois o saldo
+  // histórico depende do initial_balance de cada conta. Sem isso,
+  // criar/editar uma conta (sem transações) não atualiza o gráfico.
+  final transactionsStream = db.transactionsDao
+      .watchTransactionsByPeriod(DateTime(2000), DateTime(2100));
+  final accountsStream = db.accountsDao.watchAllAccounts();
+
+  return Rx.combineLatest2(
+    transactionsStream,
+    accountsStream,
+    (t, a) => null,
+  ).asyncMap((_) => db.transactionsDao.getMonthlyBalances(6));
 });
 
 // Próximas recorrências e parcelas agrupadas por mês
