@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/pluggy_service.dart';
+import 'package:flutter/foundation.dart';
 
 // Chaves de SharedPreferences
 const prefPluggyEnabled = 'pluggy_enabled';
@@ -147,29 +148,45 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
   Future<List<Map<String, dynamic>>> fetchNewTransactions() async {
     // Lê sempre direto do disco — evita problema de state.value ser null
     final config = await _load();
-
-    if (!config.enabled || !config.isConfigured) return [];
-
+ 
+    debugPrint('[Pluggy] fetchNewTransactions: enabled=${config.enabled}, configured=${config.isConfigured}');
+ 
+    if (!config.enabled || !config.isConfigured) {
+      debugPrint('[Pluggy] Pulando fetch: não habilitado ou não configurado.');
+      return [];
+    }
+ 
+    debugPrint('[Pluggy] lastImportMs=${config.lastImportMs}');
+ 
     try {
+      debugPrint('[Pluggy] Autenticando...');
       final apiKey = await PluggyService.authenticate(
         clientId: config.clientId,
         clientSecret: config.clientSecret,
       );
-
+      debugPrint('[Pluggy] Autenticado com sucesso.');
+ 
       // Se nunca importou, pega os últimos 2 dias
       final sinceMs = config.lastImportMs > 0
           ? config.lastImportMs
           : DateTime.now()
               .subtract(const Duration(days: 2))
               .millisecondsSinceEpoch;
-
-      return await PluggyService.fetchTransactionsSince(
+ 
+      final sinceDate = DateTime.fromMillisecondsSinceEpoch(sinceMs);
+      debugPrint('[Pluggy] Buscando transações desde: $sinceDate');
+ 
+      final txs = await PluggyService.fetchTransactionsSince(
         apiKey: apiKey,
         itemId: config.itemId,
         sinceMs: sinceMs,
       );
-    } catch (e) {
+ 
+      debugPrint('[Pluggy] Transações encontradas: ${txs.length}');
+      return txs;
+    } catch (e, st) {
       // Silencia erros de rede na inicialização — não deve travar o app
+      debugPrint('[Pluggy] Erro em fetchNewTransactions: $e\n$st');
       return [];
     }
   }

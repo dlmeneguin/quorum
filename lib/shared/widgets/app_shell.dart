@@ -24,7 +24,7 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   int _selectedIndex = 0;
   bool _isReady = false;
-  List<Map<String, dynamic>> _pendingPluggyTxs = [];
+  bool _pluggyChecked = false;
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: LucideIcons.layoutDashboard, label: 'Dashboard'),
@@ -44,31 +44,52 @@ class _AppShellState extends ConsumerState<AppShell> {
     SettingsScreen(),
   ];
 
+  // O splash apenas aguarda inicialização mínima (ex: banco de dados pronto).
+  // A checagem do Pluggy é feita DEPOIS que o app já está na tela.
   Future<void> _initialize() async {
+    // Aguarda o provider do Pluggy inicializar do SharedPreferences
+    // antes de sair do splash, para que _checkPluggy possa ler o estado correto.
     try {
-      final notifier = ref.read(pluggyConfigProvider.notifier);
-      final txs = await notifier.fetchNewTransactions();
-      _pendingPluggyTxs = txs;
+      await ref.read(pluggyConfigProvider.future);
     } catch (e) {
-      debugPrint('[AppShell] Erro no initialize: $e');
-      _pendingPluggyTxs = [];
+      debugPrint('[AppShell] Erro ao aguardar pluggyConfigProvider: $e');
     }
   }
 
   void _onSplashDone() {
     setState(() => _isReady = true);
 
-    if (_pendingPluggyTxs.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
+    // Aguarda o primeiro frame ser renderizado antes de verificar o Pluggy.
+    // Isso garante que o contexto está disponível e o provider foi hidratado.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPluggy();
+    });
+  }
+
+  Future<void> _checkPluggy() async {
+    if (_pluggyChecked || !mounted) return;
+    _pluggyChecked = true;
+
+    try {
+      final notifier = ref.read(pluggyConfigProvider.notifier);
+      debugPrint('[AppShell] Iniciando checagem do Pluggy...');
+      final txs = await notifier.fetchNewTransactions();
+
+      if (!mounted) return;
+
+      if (txs.isNotEmpty) {
+        debugPrint('[AppShell] ${txs.length} transações pendentes. Abrindo tela de importação.');
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                PluggyImportScreen(transactions: _pendingPluggyTxs),
+            builder: (_) => PluggyImportScreen(transactions: txs),
             fullscreenDialog: true,
           ),
         );
-      });
+      } else {
+        debugPrint('[AppShell] Nenhuma transação nova do Pluggy.');
+      }
+    } catch (e) {
+      debugPrint('[AppShell] Erro na checagem do Pluggy: $e');
     }
   }
 
@@ -208,8 +229,6 @@ class _MobileLayout extends StatelessWidget {
   }
 }
 
-/// Navbar customizada: cada item tem largura proporcional ao seu conteúdo,
-/// o label selecionado aparece inteiro sem quebrar linha e sem truncar.
 class _CustomBottomBar extends StatelessWidget {
   final List<_NavItem> navItems;
   final int selectedIndex;
