@@ -10,6 +10,8 @@ const prefPluggyClientId = 'pluggy_client_id';
 const _prefClientSecretEnc = 'pluggy_client_secret_enc';
 const prefPluggyItemId = 'pluggy_item_id';
 const prefPluggyLastImport = 'pluggy_last_import';
+const _prefPluggySeenIdsDate = 'pluggy_seen_ids_date';
+const _prefPluggySeenIds = 'pluggy_seen_ids';
 
 // Chave XOR para ofuscar o client_secret em repouso
 const _xorKey = 'quorum_pluggy_2026';
@@ -146,18 +148,17 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
   /// Busca transações novas.
   /// Lê direto do SharedPreferences para não depender do estado async do provider.
   Future<List<Map<String, dynamic>>> fetchNewTransactions() async {
-    // Lê sempre direto do disco — evita problema de state.value ser null
     final config = await _load();
- 
+
     debugPrint('[Pluggy] fetchNewTransactions: enabled=${config.enabled}, configured=${config.isConfigured}');
- 
+
     if (!config.enabled || !config.isConfigured) {
       debugPrint('[Pluggy] Pulando fetch: não habilitado ou não configurado.');
       return [];
     }
- 
+
     debugPrint('[Pluggy] lastImportMs=${config.lastImportMs}');
- 
+
     try {
       debugPrint('[Pluggy] Autenticando...');
       final apiKey = await PluggyService.authenticate(
@@ -165,27 +166,50 @@ class PluggyConfigNotifier extends AsyncNotifier<PluggyConfig> {
         clientSecret: config.clientSecret,
       );
       debugPrint('[Pluggy] Autenticado com sucesso.');
- 
-      // Se nunca importou, pega os últimos 2 dias
+
       final sinceMs = config.lastImportMs > 0
           ? config.lastImportMs
           : DateTime.now()
               .subtract(const Duration(days: 2))
               .millisecondsSinceEpoch;
- 
+
       final sinceDate = DateTime.fromMillisecondsSinceEpoch(sinceMs);
       debugPrint('[Pluggy] Buscando transações desde: $sinceDate');
- 
+
       final txs = await PluggyService.fetchTransactionsSince(
         apiKey: apiKey,
         itemId: config.itemId,
         sinceMs: sinceMs,
       );
- 
-      debugPrint('[Pluggy] Transações encontradas: ${txs.length}');
-      return txs;
+
+      debugPrint('[Pluggy] Transações brutas encontradas: ${txs.length}');
+
+      // Deduplica com base nos IDs salvos do último dia importado
+      final prefs = await SharedPreferences.getInstance();
+      final seenIdsDate = prefs.getString(_prefPluggySeenIdsDate) ?? '';
+      final seenIds = prefs.getStringList(_prefPluggySeenIds)?.toSet() ?? <String>{};
+
+      final filtered = txs.where((tx) {
+        final id = tx['id'] as String?;
+        if (id == null) return true;
+
+        // Verifica se esta transação é do mesmo dia que os IDs salvos
+        try {
+          final d = DateTime.parse(tx['date'] as String? ?? '');
+          final dateStr =
+              '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+          if (dateStr == seenIdsDate && seenIds.contains(id)) {
+            debugPrint('[Pluggy] Descartando transação já importada: $id');
+            return false;
+          }
+        } catch (_) {}
+
+        return true;
+      }).toList();
+
+      debugPrint('[Pluggy] Transações após deduplicação: ${filtered.length}');
+      return filtered;
     } catch (e, st) {
-      // Silencia erros de rede na inicialização — não deve travar o app
       debugPrint('[Pluggy] Erro em fetchNewTransactions: $e\n$st');
       return [];
     }

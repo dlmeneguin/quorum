@@ -13,6 +13,8 @@ import '../../settings/providers/categories_provider.dart';
 import '../../../core/services/sync_service_provider.dart';
 
 const _prefPluggyLastImport = 'pluggy_last_import';
+const _prefPluggySeenIdsDate = 'pluggy_seen_ids_date';
+const _prefPluggySeenIds = 'pluggy_seen_ids';
 
 class PluggyImportScreen extends ConsumerStatefulWidget {
   /// Transações brutas vindas da API do Pluggy
@@ -44,20 +46,10 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
     final db = ref.read(databaseProvider);
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    // Determina o timestamp mais recente entre todas as transações (importadas ou descartadas)
-    int latestTs = now;
-    for (final tx in widget.transactions) {
-      try {
-        final d = DateTime.parse(tx['date'] as String? ?? '');
-        if (d.millisecondsSinceEpoch > latestTs) latestTs = d.millisecondsSinceEpoch;
-      } catch (_) {}
-    }
-
     try {
       for (final row in _rows) {
         final amount = (row.raw['amount'] as num?)?.toDouble().abs() ?? 0.0;
         final pluggyType = row.raw['type'] as String? ?? 'DEBIT';
-        // CREDIT = receita, DEBIT = despesa
         final type = pluggyType == 'CREDIT' ? 'income' : 'expense';
 
         final dateStr = row.raw['date'] as String? ?? '';
@@ -88,9 +80,7 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
         );
       }
 
-      // Atualiza o timestamp de última importação
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_prefPluggyLastImport, latestTs);
+      await _saveImportState(widget.transactions);
 
       ref.read(syncServiceProvider).scheduleUpload();
 
@@ -109,17 +99,48 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
   }
 
   Future<void> _skipAll() async {
-    // Usuário descarta tudo — apenas atualiza o timestamp
-    int latestTs = DateTime.now().millisecondsSinceEpoch;
-    for (final tx in widget.transactions) {
+    await _saveImportState(widget.transactions);
+    if (mounted) Navigator.of(context).pop(false);
+  }
+
+  Future<void> _saveImportState(List<Map<String, dynamic>> transactions) async {
+    if (transactions.isEmpty) return;
+
+    // Encontra a transação com a data mais recente
+    DateTime? latestDay;
+    for (final tx in transactions) {
       try {
         final d = DateTime.parse(tx['date'] as String? ?? '');
-        if (d.millisecondsSinceEpoch > latestTs) latestTs = d.millisecondsSinceEpoch;
+        if (latestDay == null || d.isAfter(latestDay)) latestDay = d;
       } catch (_) {}
     }
+
+    if (latestDay == null) return;
+
+    // lastImportMs = início do dia mais recente (00:00)
+    final lastImportMs = DateTime(latestDay.year, latestDay.month, latestDay.day)
+        .millisecondsSinceEpoch;
+
+    // Coleta IDs de todas as transações daquele dia
+    final latestDateStr =
+        '${latestDay.year}-${latestDay.month.toString().padLeft(2, '0')}-${latestDay.day.toString().padLeft(2, '0')}';
+    final seenIds = <String>[];
+    for (final tx in transactions) {
+      try {
+        final d = DateTime.parse(tx['date'] as String? ?? '');
+        final dateStr =
+            '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        if (dateStr == latestDateStr) {
+          final id = tx['id'] as String?;
+          if (id != null && id.isNotEmpty) seenIds.add(id);
+        }
+      } catch (_) {}
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_prefPluggyLastImport, latestTs);
-    if (mounted) Navigator.of(context).pop(false);
+    await prefs.setInt(_prefPluggyLastImport, lastImportMs);
+    await prefs.setString(_prefPluggySeenIdsDate, latestDateStr);
+    await prefs.setStringList(_prefPluggySeenIds, seenIds);
   }
 
   @override
