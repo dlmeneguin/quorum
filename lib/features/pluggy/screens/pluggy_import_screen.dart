@@ -106,7 +106,6 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
   Future<void> _saveImportState(List<Map<String, dynamic>> transactions) async {
     if (transactions.isEmpty) return;
 
-    // Encontra a transação com a data mais recente
     DateTime? latestDay;
     for (final tx in transactions) {
       try {
@@ -117,14 +116,14 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
 
     if (latestDay == null) return;
 
-    // lastImportMs = início do dia mais recente (00:00)
     final lastImportMs = DateTime(latestDay.year, latestDay.month, latestDay.day)
         .millisecondsSinceEpoch;
 
-    // Coleta IDs de todas as transações daquele dia
     final latestDateStr =
         '${latestDay.year}-${latestDay.month.toString().padLeft(2, '0')}-${latestDay.day.toString().padLeft(2, '0')}';
-    final seenIds = <String>[];
+
+    // Coleta IDs de todas as transações do dia mais recente neste lote
+    final newIds = <String>{};
     for (final tx in transactions) {
       try {
         final d = DateTime.parse(tx['date'] as String? ?? '');
@@ -132,15 +131,24 @@ class _PluggyImportScreenState extends ConsumerState<PluggyImportScreen> {
             '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
         if (dateStr == latestDateStr) {
           final id = tx['id'] as String?;
-          if (id != null && id.isNotEmpty) seenIds.add(id);
+          if (id != null && id.isNotEmpty) newIds.add(id);
         }
       } catch (_) {}
     }
 
     final prefs = await SharedPreferences.getInstance();
+
+    // Se o dia salvo for o mesmo, faz UNIÃO com os IDs já existentes
+    final savedDate = prefs.getString(_prefPluggySeenIdsDate) ?? '';
+    final existingIds = savedDate == latestDateStr
+        ? (prefs.getStringList(_prefPluggySeenIds) ?? []).toSet()
+        : <String>{};
+
+    final allIds = existingIds.union(newIds).toList();
+
     await prefs.setInt(_prefPluggyLastImport, lastImportMs);
     await prefs.setString(_prefPluggySeenIdsDate, latestDateStr);
-    await prefs.setStringList(_prefPluggySeenIds, seenIds);
+    await prefs.setStringList(_prefPluggySeenIds, allIds);
   }
 
   @override
